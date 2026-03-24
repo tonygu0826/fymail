@@ -5,11 +5,12 @@
   "description": "FyMail standalone outbound email prospecting app",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "NEXT_DIST_DIR=.next-build next build",
+    "start": "NEXT_DIST_DIR=.next-build next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:seed": "bash -lc 'set -a && source .env.local && set +a && node prisma/seed.js'",
     "db:studio": "prisma studio",
     "test": "npm run lint"
   },

@@ -7,14 +7,15 @@ FyMail is a standalone outbound prospecting web app for FYWarehouse at `mail.fyw
 Implemented in this stage:
 
 - dashboard page
-- template management shell
-- contacts management shell
-- campaigns management shell
+- template create/list/edit flows backed by Prisma
+- contacts create/list flows backed by Prisma
+- campaign draft create/list flows with template and contact selection
 - settings page
 - working status page
 - health API endpoint
 - Prisma schema for core prospecting entities
-- environment placeholders and local run instructions
+- JSON API routes for templates, contacts, campaigns, settings, dashboard, and health
+- local seed helper and exact test commands
 
 Intentionally not implemented yet:
 
@@ -63,6 +64,12 @@ Push the schema to your local database:
 npm run db:push
 ```
 
+Seed local MVP data:
+
+```bash
+npm run db:seed
+```
+
 Optional: open Prisma Studio.
 
 ```bash
@@ -85,6 +92,78 @@ Open:
 - `http://localhost:3000/status`
 - `http://localhost:3000/api/health`
 
+## Exact Local Test Flow
+
+Run these commands from the repo root:
+
+```bash
+cp .env.example .env.local
+npm install
+npm run db:generate
+npm run db:push
+npm run db:seed
+npm run dev
+```
+
+Then verify these MVP flows in the browser:
+
+1. Open `http://localhost:3000/status` and confirm the database is reachable.
+2. Open `http://localhost:3000/templates`, create a template, then open its edit screen and save changes.
+3. Open `http://localhost:3000/contacts` and create a contact.
+4. Open `http://localhost:3000/campaigns`, select a template and one or more contacts, and save a draft campaign.
+5. Open `http://localhost:3000/settings` and confirm environment readiness, safe runtime config, and live record counts.
+
+You can also hit the JSON APIs directly:
+
+```bash
+curl http://localhost:3000/api/templates
+curl http://localhost:3000/api/contacts
+curl http://localhost:3000/api/campaigns
+curl http://localhost:3000/api/settings
+curl http://localhost:3000/api/health
+```
+
+Example create requests:
+
+```bash
+curl -X POST http://localhost:3000/api/templates \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name":"Benelux Intro",
+    "slug":"benelux-intro",
+    "language":"EN",
+    "subject":"Canada-bound LCL support for Benelux forwarders",
+    "bodyHtml":"<p>Hello {{contactName}},</p><p>We support Canada-bound LCL moves.</p>",
+    "bodyText":"Hello {{contactName}}, we support Canada-bound LCL moves.",
+    "variables":["contactName","companyName","countryCode"],
+    "status":"DRAFT"
+  }'
+```
+
+```bash
+curl -X POST http://localhost:3000/api/contacts \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "companyName":"Channel Freight Ltd",
+    "contactName":"Emma Clarke",
+    "email":"emma@channelfreight.example",
+    "countryCode":"UK",
+    "status":"READY",
+    "tags":["uk","priority"]
+  }'
+```
+
+```bash
+curl -X POST http://localhost:3000/api/campaigns \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name":"Benelux Week 1",
+    "templateId":"REPLACE_WITH_TEMPLATE_ID",
+    "contactIds":["REPLACE_WITH_CONTACT_ID"],
+    "status":"DRAFT"
+  }'
+```
+
 ## Verification
 
 Lint:
@@ -101,6 +180,6 @@ npm run build
 
 ## Notes On Data Behavior
 
-- If `DATABASE_URL` is present and Prisma can connect, the app reads real data.
-- If the database is not configured or not ready, the UI falls back to safe demo data so the routes remain testable.
-- This is deliberate for MVP bootability; the fallback should be removed once CRUD and seeding are in place.
+- If `DATABASE_URL` is present and Prisma can connect, the app reads and writes real data.
+- The UI uses server actions for the browser flows and the API routes remain available for direct testing.
+- If the database is not configured or not ready, read views fall back to safe demo data so health and route checks still render.
