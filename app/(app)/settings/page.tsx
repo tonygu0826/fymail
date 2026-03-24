@@ -56,6 +56,58 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </div>
         </Panel>
 
+        <Panel
+          title="SMTP readiness"
+          description="Safe send-readiness summary only. Passwords and raw secrets are never displayed."
+        >
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Provider</p>
+              <p className="mt-2 font-medium text-slate-900">{settings.smtp.provider}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Host</p>
+                <p className="mt-2 font-medium text-slate-900">{settings.smtp.host ?? "Not set"}</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Port / Secure</p>
+                <p className="mt-2 font-medium text-slate-900">
+                  {settings.smtp.port ?? "Not set"} / {settings.smtp.secure ? "TLS" : "STARTTLS or plain"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Auth</p>
+                <p className="mt-2 font-medium text-slate-900">
+                  User: {settings.smtp.authUserConfigured ? "Configured" : "Missing"} · Password:{" "}
+                  {settings.smtp.authPasswordConfigured ? "Configured" : "Missing"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">From</p>
+                <p className="mt-2 font-medium text-slate-900">
+                  {settings.smtp.fromName
+                    ? `${settings.smtp.fromName} <${settings.smtp.fromEmail ?? "not set"}>`
+                    : settings.smtp.fromEmail ?? "Not set"}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+              <p className="font-semibold text-slate-900">
+                {settings.smtp.ready ? "Manual single-send ready" : "SMTP not ready"}
+              </p>
+              <p className="mt-2 text-sm text-slate-600">{settings.smtp.detail}</p>
+              <p className="mt-3 text-sm text-slate-600">
+                Guardrail: FyMail D1 supports one manual recipient per send only. Queueing, retries,
+                batching, and rate limiting are still out of scope.
+              </p>
+            </div>
+          </div>
+        </Panel>
+
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
         <Panel title="App settings" description="Persisted non-secret settings when Prisma is connected, otherwise safe defaults.">
           <div className="space-y-3">
             {settings.appSettings.map((setting) => (
@@ -94,6 +146,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <div className="rounded-2xl border border-slate-200 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Campaigns</p>
               <p className="mt-2 text-2xl font-semibold text-slate-950">{settings.dataCounts.campaigns}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Email Logs</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-950">{settings.dataCounts.emailLogs}</p>
             </div>
           </div>
         </Panel>

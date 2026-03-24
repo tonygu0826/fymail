@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getEnvironmentStatus, isDatabaseConfigured } from "@/lib/env";
 import { getDatabaseHealth } from "@/lib/health";
 import { defaultOperator, formatJsonValue } from "@/lib/mvp-data";
+import { getSmtpReadiness } from "@/lib/smtp";
 
 const fallbackData = {
   templates: [
@@ -389,9 +390,9 @@ export async function getSettingsSummary() {
 
   let appSettings: Array<{ key: string; value: string }> = [
     { key: "tenant_mode", value: "single-user" },
-    { key: "campaign_execution", value: "manual shell only" },
+    { key: "campaign_execution", value: "manual single-send only" },
     { key: "contact_import", value: "planned" },
-    { key: "mail_delivery", value: "not implemented" },
+    { key: "mail_delivery", value: "smtp manual single-send only" },
   ];
 
   if (isDatabaseConfigured()) {
@@ -417,20 +418,23 @@ export async function getSettingsSummary() {
     templates: fallbackData.templates.length,
     contacts: fallbackData.contacts.length,
     campaigns: fallbackData.campaigns.length,
+    emailLogs: 0,
   };
 
   if (isDatabaseConfigured() && database.reachable) {
     try {
-      const [templates, contacts, campaigns] = await Promise.all([
+      const [templates, contacts, campaigns, emailLogs] = await Promise.all([
         prisma.emailTemplate.count(),
         prisma.contact.count(),
         prisma.campaign.count(),
+        prisma.emailLog.count(),
       ]);
 
       dataCounts = {
         templates,
         contacts,
         campaigns,
+        emailLogs,
       };
     } catch {
       // Keep safe fallback counts.
@@ -438,6 +442,7 @@ export async function getSettingsSummary() {
   }
 
   const environment = getEnvironmentStatus();
+  const smtp = getSmtpReadiness();
   const publicConfig = [
     {
       key: "app_url",
@@ -449,11 +454,17 @@ export async function getSettingsSummary() {
       value: defaultOperator.email,
       description: "Single local operator identity used for MVP writes.",
     },
+    {
+      key: "mail_mode",
+      value: "manual single-send only",
+      description: "No queueing, retries, batching, or rate limiting are implemented yet.",
+    },
   ];
 
   return {
     appSettings,
     environment,
+    smtp,
     database,
     publicConfig,
     dataCounts,
@@ -467,8 +478,9 @@ export async function getStatusSummary() {
   return {
     app: "FyMail",
     environment: process.env.NODE_ENV ?? "development",
-    version: "mvp",
+    version: "d1",
     database,
+    smtp: getSmtpReadiness(),
     dataSource: dashboard.source,
     counts: dashboard.counts,
   };

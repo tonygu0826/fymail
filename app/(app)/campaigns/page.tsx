@@ -5,9 +5,9 @@ import { FlashMessage } from "@/components/ui/flash-message";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
-import { getCampaignComposerData, getCampaigns, mvpOptions } from "@/lib/app-data";
+import { getCampaignComposerData, getCampaigns, getSettingsSummary, mvpOptions } from "@/lib/app-data";
 import { formatDate } from "@/lib/utils";
-import { createCampaignAction } from "@/app/(app)/campaigns/actions";
+import { createCampaignAction, sendManualSingleEmailAction } from "@/app/(app)/campaigns/actions";
 
 type CampaignsPageProps = {
   searchParams?: {
@@ -17,8 +17,18 @@ type CampaignsPageProps = {
 };
 
 export default async function CampaignsPage({ searchParams }: CampaignsPageProps) {
-  const [campaigns, composer] = await Promise.all([getCampaigns(), getCampaignComposerData()]);
+  const [campaigns, composer, settings] = await Promise.all([
+    getCampaigns(),
+    getCampaignComposerData(),
+    getSettingsSummary(),
+  ]);
   const canCreateCampaign = composer.templates.length > 0 && composer.contacts.length > 0;
+  const canSendSingle =
+    composer.source === "database" &&
+    composer.templates.length > 0 &&
+    composer.contacts.length > 0 &&
+    settings.database.reachable &&
+    settings.smtp.ready;
 
   return (
     <>
@@ -167,6 +177,74 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
           </div>
         </Panel>
       </section>
+
+      <Panel
+        title="Manual single send"
+        description="Controlled D1 send path: one selected template to one selected contact through real SMTP."
+      >
+        <form action={sendManualSingleEmailAction} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block space-y-2 text-sm text-slate-700">
+              <span className="font-medium">Template</span>
+              <select
+                name="templateId"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
+                defaultValue=""
+                disabled={!canSendSingle}
+              >
+                <option value="" disabled>
+                  Select a template
+                </option>
+                {composer.templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} ({template.status})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block space-y-2 text-sm text-slate-700">
+              <span className="font-medium">Contact</span>
+              <select
+                name="contactId"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
+                defaultValue=""
+                disabled={!canSendSingle}
+              >
+                <option value="" disabled>
+                  Select a contact
+                </option>
+                {composer.contacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>
+                    {contact.companyName} · {contact.email} ({contact.status})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <input type="checkbox" name="confirmSingleSend" className="mt-1" disabled={!canSendSingle} />
+            <span>
+              I understand this is a guarded manual single-send. FyMail D1 has no queue, rate limiting,
+              batching, retry worker, or unsubscribe automation yet.
+            </span>
+          </label>
+
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-slate-600">
+              <p>SMTP readiness: {settings.smtp.ready ? "Ready" : "Blocked"}</p>
+              <p>{settings.smtp.detail}</p>
+            </div>
+            <button
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={!canSendSingle}
+            >
+              Send one real email
+            </button>
+          </div>
+        </form>
+      </Panel>
     </>
   );
 }

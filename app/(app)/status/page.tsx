@@ -23,7 +23,7 @@ export default async function StatusPage() {
         }
       />
 
-      <section className="grid gap-6 xl:grid-cols-3">
+      <section className="grid gap-6 xl:grid-cols-4">
         <Panel title="App" description="Static runtime status">
           <div className="space-y-2 text-sm text-slate-600">
             <p>
@@ -66,6 +66,18 @@ export default async function StatusPage() {
             <p>
               <span className="font-semibold text-slate-900">Campaigns:</span> {status.counts.campaigns}
             </p>
+          </div>
+        </Panel>
+
+        <Panel title="SMTP" description="Safe mail readiness summary">
+          <div className="space-y-2 text-sm text-slate-600">
+            <p>
+              <span className="font-semibold text-slate-900">Provider:</span> {status.smtp.provider}
+            </p>
+            <p>
+              <span className="font-semibold text-slate-900">Ready:</span> {status.smtp.ready ? "Yes" : "No"}
+            </p>
+            <p>{status.smtp.detail}</p>
           </div>
         </Panel>
       </section>

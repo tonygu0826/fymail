@@ -10,6 +10,8 @@ Implemented in this stage:
 - template create/list/edit flows backed by Prisma
 - contacts create/list flows backed by Prisma
 - campaign draft create/list flows with template and contact selection
+- real SMTP-backed manual single-send flow from a selected template to a selected contact
+- `EmailLog` persistence for send attempts and outcomes
 - settings page
 - working status page
 - health API endpoint
@@ -19,8 +21,8 @@ Implemented in this stage:
 
 Intentionally not implemented yet:
 
-- SMTP delivery workflow
 - queue workers and Redis
+- bulk sending, queue workers, retries, and rate limiting
 - CSV import processor
 - auth and multi-user permissions
 - analytics and reply tracking
@@ -36,12 +38,34 @@ Intentionally not implemented yet:
 
 1. Copy `.env.example` to `.env.local`.
 2. Update `DATABASE_URL` for your PostgreSQL instance.
-3. Leave SMTP values as placeholders unless you are actively wiring mail delivery in a later milestone.
+3. Set SMTP values only through `.env.local` when you want to test real delivery.
 
 Example:
 
 ```bash
 cp .env.example .env.local
+```
+
+SMTP variables used by D1:
+
+- `SMTP_HOST` required
+- `SMTP_PORT` required
+- `SMTP_SECURE` optional, defaults to `true` when port is `465`, otherwise `false`
+- `SMTP_USER` required
+- `SMTP_PASSWORD` required
+- `SMTP_FROM_EMAIL` optional, defaults to `SMTP_USER`
+- `SMTP_FROM_NAME` optional
+
+Gmail SMTP example for the validated FYWarehouse mailbox:
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=ops@fywarehouse.com
+SMTP_PASSWORD=REPLACE_WITH_REAL_SECRET
+SMTP_FROM_EMAIL=ops@fywarehouse.com
+SMTP_FROM_NAME=FYWarehouse Ops
 ```
 
 ## Install
@@ -108,10 +132,12 @@ npm run dev
 Then verify these MVP flows in the browser:
 
 1. Open `http://localhost:3000/status` and confirm the database is reachable.
-2. Open `http://localhost:3000/templates`, create a template, then open its edit screen and save changes.
-3. Open `http://localhost:3000/contacts` and create a contact.
-4. Open `http://localhost:3000/campaigns`, select a template and one or more contacts, and save a draft campaign.
-5. Open `http://localhost:3000/settings` and confirm environment readiness, safe runtime config, and live record counts.
+2. Open `http://localhost:3000/settings` and confirm SMTP readiness is safe to view and secrets are not shown.
+3. Open `http://localhost:3000/templates`, create a template, then open its edit screen and save changes.
+4. Open `http://localhost:3000/contacts` and create a contact with an inbox you control.
+5. Open `http://localhost:3000/campaigns`, select a template and one or more contacts, and save a draft campaign.
+6. In the `Manual single send` panel on `/campaigns`, select one template and one contact, tick the guardrail checkbox, and send one real email.
+7. Return to `/settings` and confirm `Email Logs` increased.
 
 You can also hit the JSON APIs directly:
 
@@ -183,3 +209,4 @@ npm run build
 - If `DATABASE_URL` is present and Prisma can connect, the app reads and writes real data.
 - The UI uses server actions for the browser flows and the API routes remain available for direct testing.
 - If the database is not configured or not ready, read views fall back to safe demo data so health and route checks still render.
+- Real delivery is intentionally limited to one manual recipient per action. FyMail D1 is not production-ready for bulk sending.

@@ -342,13 +342,13 @@ export async function seedLocalMvpData() {
   await prisma.appSetting.upsert({
     where: { key: "mail_delivery" },
     update: {
-      value: "not-implemented",
-      description: "Outbound delivery remains intentionally disabled in the MVP.",
+      value: "smtp-manual-single-send",
+      description: "Outbound delivery is limited to guarded single sends through SMTP.",
     },
     create: {
       key: "mail_delivery",
-      value: "not-implemented",
-      description: "Outbound delivery remains intentionally disabled in the MVP.",
+      value: "smtp-manual-single-send",
+      description: "Outbound delivery is limited to guarded single sends through SMTP.",
     },
   });
 }
