@@ -71,6 +71,12 @@ export const campaignPayloadSchema = z.object({
     .optional(),
 });
 
+export const manualSendPayloadSchema = z.object({
+  templateId: z.string().trim().min(1, "Template selection is required"),
+  contactId: z.string().trim().min(1, "Contact selection is required"),
+  confirmSingleSend: z.literal(true, "Confirm the guarded single-send checkbox before sending."),
+});
+
 export function parseCommaSeparatedList(value: string) {
   return value
     .split(",")
@@ -81,4 +87,14 @@ export function parseCommaSeparatedList(value: string) {
 export function getFormStringValue(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
+}
+
+export function getFormBooleanValue(formData: FormData, key: string) {
+  const value = formData.get(key);
+
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return ["on", "true", "1", "yes"].includes(value.toLowerCase());
 }
