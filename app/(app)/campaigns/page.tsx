@@ -1,36 +1,55 @@
 import { Play, PlusCircle } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { FlashMessage } from "@/components/ui/flash-message";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
-import { getCampaigns, mvpOptions } from "@/lib/app-data";
+import { getCampaignComposerData, getCampaigns, mvpOptions } from "@/lib/app-data";
 import { formatDate } from "@/lib/utils";
+import { createCampaignAction } from "@/app/(app)/campaigns/actions";
 
-export default async function CampaignsPage() {
-  const campaigns = await getCampaigns();
+type CampaignsPageProps = {
+  searchParams?: {
+    message?: string;
+    error?: string;
+  };
+};
+
+export default async function CampaignsPage({ searchParams }: CampaignsPageProps) {
+  const [campaigns, composer] = await Promise.all([getCampaigns(), getCampaignComposerData()]);
+  const canCreateCampaign = composer.templates.length > 0 && composer.contacts.length > 0;
 
   return (
     <>
       <PageHeader
         eyebrow="Campaigns"
-        title="Campaign management shell"
-        description="Define batches of outbound prospects and their template pairing. Queue-backed execution is intentionally out of scope for the first runnable milestone."
+        title="Campaign drafts"
+        description="Create draft campaigns with a real template and contact selection. Send execution stays intentionally out of scope."
         actions={
           <>
-            <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900"
+            >
               <Play className="h-4 w-4" />
-              Start send
+              Draft only
             </button>
-            <button className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+            <a
+              href="#create-campaign"
+              className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
+            >
               <PlusCircle className="h-4 w-4" />
               New campaign
-            </button>
+            </a>
           </>
         }
       />
 
-      <section className="grid gap-6 xl:grid-cols-[1.3fr,0.7fr]">
+      {searchParams?.message ? <FlashMessage message={searchParams.message} /> : null}
+      {searchParams?.error ? <FlashMessage tone="error" message={searchParams.error} /> : null}
+
+      <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
         <Panel title="Campaign list" description={`Source: ${campaigns.source}`}>
           {campaigns.items.length > 0 ? (
             <div className="space-y-4">
@@ -59,13 +78,93 @@ export default async function CampaignsPage() {
           )}
         </Panel>
 
-        <Panel title="Execution guardrails" description="Current behavior is intentionally conservative.">
-          <ul className="space-y-3 text-sm leading-6 text-slate-600">
-            <li>Supported lifecycle states: {mvpOptions.campaignStatuses.join(", ")}.</li>
-            <li>Campaign send endpoints exist only as reserved contracts until mail infrastructure is real.</li>
-            <li>Audience membership is modeled through a dedicated join table for future per-contact delivery state.</li>
-            <li>Scheduling fields are present in the schema, even though worker execution is deferred.</li>
-          </ul>
+        <Panel
+          title="Create draft"
+          description="Choose one template and at least one contact to make the draft campaign operable."
+        >
+          <form id="create-campaign" action={createCampaignAction} className="space-y-4">
+            <label className="block space-y-2 text-sm text-slate-700">
+              <span className="font-medium">Campaign name</span>
+              <input
+                name="name"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
+                placeholder="Germany Forwarders Batch"
+                required
+                disabled={!canCreateCampaign}
+              />
+            </label>
+            <label className="block space-y-2 text-sm text-slate-700">
+              <span className="font-medium">Description</span>
+              <textarea
+                name="description"
+                className="min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
+                placeholder="Optional internal note for this draft"
+                disabled={!canCreateCampaign}
+              />
+            </label>
+            <label className="block space-y-2 text-sm text-slate-700">
+              <span className="font-medium">Template</span>
+              <select
+                name="templateId"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
+                disabled={!canCreateCampaign}
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  Select a template
+                </option>
+                {composer.templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} ({template.status})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">Contacts</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-slate-500">
+                  {composer.contacts.length} available
+                </span>
+              </div>
+              <div className="max-h-80 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                {composer.contacts.length > 0 ? (
+                  composer.contacts.map((contact) => (
+                    <label
+                      key={contact.id}
+                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+                    >
+                      <input
+                        type="checkbox"
+                        name="contactIds"
+                        value={contact.id}
+                        className="mt-1"
+                        disabled={!canCreateCampaign}
+                      />
+                      <span>
+                        <span className="block font-semibold text-slate-900">{contact.companyName}</span>
+                        <span className="mt-1 block text-slate-600">
+                          {[contact.contactName, contact.email, contact.status].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-600">Create contacts before drafting a campaign.</p>
+                )}
+              </div>
+            </div>
+            <button
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              disabled={!canCreateCampaign}
+            >
+              Save campaign draft
+            </button>
+          </form>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            Supported lifecycle states: {mvpOptions.campaignStatuses.join(", ")}. This MVP only creates drafts and stores target contact links.
+          </div>
         </Panel>
       </section>
     </>

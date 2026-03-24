@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { getCampaigns } from "@/lib/app-data";
-
-const createCampaignSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  templateId: z.string().min(1),
-  status: z.string().default("DRAFT"),
-  audienceFilter: z.record(z.string(), z.any()).optional(),
-  scheduledAt: z.string().datetime().nullable().optional(),
-});
+import { createCampaignRecord } from "@/lib/mvp-data";
+import { campaignPayloadSchema } from "@/lib/schemas";
 
 export async function GET() {
   const data = await getCampaigns();
@@ -23,7 +15,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const parsed = createCampaignSchema.safeParse(body);
+  const parsed = campaignPayloadSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -39,14 +31,23 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        code: "NOT_IMPLEMENTED",
-        message: "Campaign persistence and send execution are planned for the next milestone.",
+  try {
+    const campaign = await createCampaignRecord(parsed.data);
+
+    return NextResponse.json({
+      success: true,
+      data: campaign,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "CREATE_FAILED",
+          message: error instanceof Error ? error.message : "Campaign creation failed",
+        },
       },
-    },
-    { status: 501 },
-  );
+      { status: 400 },
+    );
+  }
 }
