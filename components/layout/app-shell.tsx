@@ -65,7 +65,7 @@ export function AppShell({ pathname, children }: AppShellProps) {
               </h2>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              Current scope: internal ops shell, health checks, Prisma schema, and route skeletons.
+              Current scope: operable local MVP for templates, contacts, campaign drafts, and status checks.
             </div>
           </div>
         </div>

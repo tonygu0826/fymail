@@ -3,6 +3,7 @@ import { CampaignStatus, ContactStatus, TemplateStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getEnvironmentStatus, isDatabaseConfigured } from "@/lib/env";
 import { getDatabaseHealth } from "@/lib/health";
+import { defaultOperator, formatJsonValue } from "@/lib/mvp-data";
 
 const fallbackData = {
   templates: [
@@ -13,6 +14,10 @@ const fallbackData = {
       language: "EN",
       status: "ACTIVE",
       subject: "Reliable LCL to Canada for European forwarders",
+      bodyHtml: "<p>Hello {{contactName}},</p><p>Reliable Canada-bound LCL support for your team.</p>",
+      bodyText: "Hello {{contactName}}, Reliable Canada-bound LCL support for your team.",
+      variables: ["companyName", "contactName", "countryCode"],
+      notes: "Fallback demo template",
       updatedAt: new Date("2026-03-20T10:30:00Z"),
     },
     {
@@ -22,6 +27,10 @@ const fallbackData = {
       language: "DE",
       status: "DRAFT",
       subject: "China to Canada consolidation support",
+      bodyHtml: "<p>Hello {{contactName}},</p><p>Following up on Canada consolidation support.</p>",
+      bodyText: "Hello {{contactName}}, Following up on Canada consolidation support.",
+      variables: ["companyName", "contactName", "countryCode"],
+      notes: "Fallback demo template",
       updatedAt: new Date("2026-03-19T09:15:00Z"),
     },
   ],
@@ -217,6 +226,24 @@ export async function getTemplates() {
   }
 }
 
+export async function getTemplateById(id: string) {
+  if (!isDatabaseConfigured()) {
+    return fallbackData.templates.find((template) => template.id === id) ?? null;
+  }
+
+  try {
+    return await prisma.emailTemplate.findUnique({
+      where: { id },
+    });
+  } catch (error) {
+    if (isPrismaRuntimeError(error)) {
+      return fallbackData.templates.find((template) => template.id === id) ?? null;
+    }
+
+    throw error;
+  }
+}
+
 export async function getContacts() {
   if (!isDatabaseConfigured()) {
     return { source: "fallback", items: fallbackData.contacts };
@@ -283,6 +310,80 @@ export async function getCampaigns() {
   }
 }
 
+export async function getCampaignComposerData() {
+  if (!isDatabaseConfigured()) {
+    return {
+      source: "fallback" as const,
+      templates: fallbackData.templates.map((template) => ({
+        id: template.id,
+        name: template.name,
+        status: template.status,
+      })),
+      contacts: fallbackData.contacts.map((contact) => ({
+        id: contact.id,
+        companyName: contact.companyName,
+        contactName: contact.contactName,
+        email: contact.email,
+        status: contact.status,
+      })),
+    };
+  }
+
+  try {
+    const [templates, contacts] = await Promise.all([
+      prisma.emailTemplate.findMany({
+        orderBy: {
+          updatedAt: "desc",
+        },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+        },
+      }),
+      prisma.contact.findMany({
+        orderBy: {
+          createdAt: "desc",
+        },
+        select: {
+          id: true,
+          companyName: true,
+          contactName: true,
+          email: true,
+          status: true,
+        },
+      }),
+    ]);
+
+    return {
+      source: "database" as const,
+      templates,
+      contacts,
+    };
+  } catch (error) {
+    if (isPrismaRuntimeError(error)) {
+      return {
+        source: "fallback" as const,
+        templates: fallbackData.templates.map((template) => ({
+          id: template.id,
+          name: template.name,
+          status: template.status,
+        })),
+        contacts: fallbackData.contacts.map((contact) => ({
+          id: contact.id,
+          companyName: contact.companyName,
+          contactName: contact.contactName,
+          email: contact.email,
+          status: contact.status,
+        })),
+        databaseError: error.message,
+      };
+    }
+
+    throw error;
+  }
+}
+
 export async function getSettingsSummary() {
   const database = await getDatabaseHealth();
 
@@ -304,7 +405,7 @@ export async function getSettingsSummary() {
       if (settings.length > 0) {
         appSettings = settings.map((setting) => ({
           key: setting.key,
-          value: JSON.stringify(setting.value),
+          value: formatJsonValue(setting.value),
         }));
       }
     } catch {
@@ -312,10 +413,50 @@ export async function getSettingsSummary() {
     }
   }
 
+  let dataCounts = {
+    templates: fallbackData.templates.length,
+    contacts: fallbackData.contacts.length,
+    campaigns: fallbackData.campaigns.length,
+  };
+
+  if (isDatabaseConfigured() && database.reachable) {
+    try {
+      const [templates, contacts, campaigns] = await Promise.all([
+        prisma.emailTemplate.count(),
+        prisma.contact.count(),
+        prisma.campaign.count(),
+      ]);
+
+      dataCounts = {
+        templates,
+        contacts,
+        campaigns,
+      };
+    } catch {
+      // Keep safe fallback counts.
+    }
+  }
+
+  const environment = getEnvironmentStatus();
+  const publicConfig = [
+    {
+      key: "app_url",
+      value: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      description: "Safe public app URL used for local testing.",
+    },
+    {
+      key: "operator_email",
+      value: defaultOperator.email,
+      description: "Single local operator identity used for MVP writes.",
+    },
+  ];
+
   return {
     appSettings,
-    environment: getEnvironmentStatus(),
+    environment,
     database,
+    publicConfig,
+    dataCounts,
   };
 }
 

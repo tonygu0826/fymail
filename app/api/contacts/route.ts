@@ -1,19 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { getContacts } from "@/lib/app-data";
-
-const createContactSchema = z.object({
-  companyName: z.string().min(1),
-  contactName: z.string().optional(),
-  email: z.string().email(),
-  countryCode: z.string().min(2),
-  jobTitle: z.string().optional(),
-  source: z.string().optional(),
-  status: z.string().default("NEW"),
-  tags: z.array(z.string()).default([]),
-  notes: z.string().optional(),
-});
+import { createContactRecord } from "@/lib/mvp-data";
+import { contactPayloadSchema } from "@/lib/schemas";
 
 export async function GET() {
   const data = await getContacts();
@@ -26,7 +15,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const parsed = createContactSchema.safeParse(body);
+  const parsed = contactPayloadSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -42,14 +31,23 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        code: "NOT_IMPLEMENTED",
-        message: "Contact creation persistence is planned for the next milestone.",
+  try {
+    const contact = await createContactRecord(parsed.data);
+
+    return NextResponse.json({
+      success: true,
+      data: contact,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "CREATE_FAILED",
+          message: error instanceof Error ? error.message : "Contact creation failed",
+        },
       },
-    },
-    { status: 501 },
-  );
+      { status: 400 },
+    );
+  }
 }
