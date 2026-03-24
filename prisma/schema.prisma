@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+}
+
+enum TemplateLanguage {
+  EN
+  FR
+  DE
+  NL
+  OTHER
+}
+
+enum TemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum ContactStatus {
+  NEW
+  READY
+  CONTACTED
+  REPLIED
+  BOUNCED
+  UNSUBSCRIBED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum CampaignContactStatus {
+  PENDING
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+  REPLIED
+}
+
+enum EmailDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum EmailLogStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
+}
+
+model User {
+  id         String          @id @default(cuid())
+  email      String          @unique
+  name       String
+  role       UserRole        @default(ADMIN)
+  templates  EmailTemplate[]
+  contacts   Contact[]
+  campaigns  Campaign[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+model EmailTemplate {
+  id         String          @id @default(cuid())
+  name       String
+  slug       String          @unique
+  language   TemplateLanguage
+  subject    String
+  bodyHtml   String          @db.Text
+  bodyText   String?         @db.Text
+  variables  Json
+  status     TemplateStatus  @default(DRAFT)
+  notes      String?         @db.Text
+  ownerId    String
+  owner      User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  campaigns  Campaign[]
+  emailLogs  EmailLog[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model Contact {
+  id              String           @id @default(cuid())
+  companyName     String
+  contactName     String?
+  email           String           @unique
+  countryCode     String
+  marketRegion    String?
+  jobTitle        String?
+  source          String?
+  status          ContactStatus    @default(NEW)
+  tags            Json
+  notes           String?          @db.Text
+  lastContactedAt DateTime?
+  ownerId         String
+  owner           User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  targets         CampaignContact[]
+  emailLogs       EmailLog[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([countryCode])
+  @@index([status])
+  @@index([ownerId])
+}
+
+model Campaign {
+  id             String            @id @default(cuid())
+  name           String
+  description    String?           @db.Text
+  status         CampaignStatus    @default(DRAFT)
+  audienceFilter Json?
+  scheduledAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  templateId     String
+  template       EmailTemplate     @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  ownerId        String
+  owner          User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  targets        CampaignContact[]
+  emailLogs      EmailLog[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status])
+  @@index([templateId])
+  @@index([ownerId])
+}
+
+model CampaignContact {
+  id              String                 @id @default(cuid())
+  campaignId      String
+  campaign        Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contactId       String
+  contact         Contact                @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status          CampaignContactStatus  @default(PENDING)
+  personalization Json?
+  sentAt          DateTime?
+  openedAt        DateTime?
+  repliedAt       DateTime?
+  failureReason   String?                @db.Text
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@unique([campaignId, contactId])
+  @@index([status])
+  @@index([campaignId])
+  @@index([contactId])
+}
+
+model EmailLog {
+  id             String          @id @default(cuid())
+  campaignId     String?
+  campaign       Campaign?       @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  contactId      String?
+  contact        Contact?        @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  templateId     String?
+  template       EmailTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  messageId      String?
+  direction      EmailDirection  @default(OUTBOUND)
+  status         EmailLogStatus  @default(PENDING)
+  subject        String
+  recipientEmail String
+  provider       String?
+  errorMessage   String?         @db.Text
+  metadata       Json?
+  sentAt         DateTime?
+  createdAt      DateTime        @default(now())
+
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([templateId])
+  @@index([status])
+}
+
+model AppSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
