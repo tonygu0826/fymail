@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l D:/fymail/fymail-web/app/**/*.tsx D:/fymail/fymail-web/components/**/*.tsx D:/fymail/fymail-web/lib/**/*.ts)",
+      "Bash(grep -E \"\\\\.\\(ts|js|json|sql|yml|yaml|dockerfile|gitignore|env\\)$|Dockerfile\")",
+      "Bash(find D:/fymail/fymail-web -not -path */node_modules/* -not -path */.next/* -type d)",
+      "Bash(find /d/fymail/fymail-api -not -path */node_modules/* -type d)",
+      "Bash(find D:/fymail/fymail-web/components D:/fymail/fymail-web/lib D:/fymail/fymail-web/types D:/fymail/fymail-web/public -not -path */node_modules/* -type f)",
+      "Bash(/tmp/fymail_structure.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(ls \"D:/fymail/{fymail-api,fymail-web}/\")",
+      "Bash(ls -la \"D:/fymail/{fymail-api,fymail-web}/\")",
+      "Bash(gh auth:*)",
+      "Bash(git --version)"
+    ]
+  }
+}

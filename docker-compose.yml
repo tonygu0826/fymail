@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL (local dev only — use Supabase in production) ────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: fymail-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fymail
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend API ───────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./fymail-api
+      dockerfile: Dockerfile
+    container_name: fymail-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fymail
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-32-char-key-for-aes!!}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      TRACKING_BASE_URL: ${TRACKING_BASE_URL:-http://localhost:3001}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./fymail-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001/v1
+    container_name: fymail-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/v1
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
