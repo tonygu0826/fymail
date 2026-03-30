@@ -46,7 +46,7 @@ export function ContactFormModal({
     country: "",
     website: "",
     notes: "",
-    status: "cold" as const,
+    status: "cold" as string,
     score: 3,
     tags: "",
     serviceTypes: [] as string[],
