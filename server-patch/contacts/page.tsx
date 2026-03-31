@@ -44,8 +44,8 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
 
       {/* === 所有联系人列表 === */}
       <section className="space-y-6">
-        <Panel title="所有联系人" description={`共 ${contacts.items.length} 位联系人`}>
-          {contacts.items.length > 0 ? (
+        <Panel title="所有联系人" description={isDatabase ? `共 ${contacts.items.length} 位联系人` : "数据库未配置，暂无真实联系人"}>
+          {contacts.items.length > 0 && isDatabase ? (
             <div className="overflow-hidden rounded-3xl border border-theme-border">
               <table className="min-w-full divide-y divide-theme-border text-sm">
                 <thead className="bg-theme-card-muted">
@@ -93,7 +93,7 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
           ) : (
             <EmptyState
               title="暂无联系人"
-              description="在下方添加第一个联系人。"
+              description="在下方添加第一个联系人到数据库。"
             />
           )}
         </Panel>
