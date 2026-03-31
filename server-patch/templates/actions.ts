@@ -74,7 +74,7 @@ export async function deleteTemplateAction(formData: FormData) {
     redirect("/templates?error=Missing template ID");
   }
 
-  const { prisma } = await import("@/lib/prisma");
+  const { prisma } = await import("@/lib/db");
 
   try {
     await prisma.emailTemplate.delete({ where: { id } });
