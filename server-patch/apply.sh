@@ -1,20 +1,22 @@
 #!/bin/bash
-# Apply template management updates to the server
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TARGET_DIR="$(dirname "$SCRIPT_DIR")"
+
+echo "=== Applying template updates ==="
 TEMPLATES_DIR="$TARGET_DIR/app/(app)/templates"
-
-echo "Copying files to $TEMPLATES_DIR ..."
-
 cp "$SCRIPT_DIR/templates/actions.ts" "$TEMPLATES_DIR/actions.ts"
 cp "$SCRIPT_DIR/templates/delete-button.tsx" "$TEMPLATES_DIR/delete-button.tsx"
 cp "$SCRIPT_DIR/templates/page.tsx" "$TEMPLATES_DIR/page.tsx"
+echo "  templates: done"
 
-echo "Done! Files updated:"
-echo "  - actions.ts (added deleteTemplateAction)"
-echo "  - delete-button.tsx (new client component)"
-echo "  - page.tsx (vertical layout + edit/delete)"
+echo "=== Applying contacts updates ==="
+CONTACTS_DIR="$TARGET_DIR/app/(app)/contacts"
+cp "$SCRIPT_DIR/contacts/actions.ts" "$CONTACTS_DIR/actions.ts"
+cp "$SCRIPT_DIR/contacts/delete-button.tsx" "$CONTACTS_DIR/delete-button.tsx"
+cp "$SCRIPT_DIR/contacts/page.tsx" "$CONTACTS_DIR/page.tsx"
+echo "  contacts: done"
+
 echo ""
-echo "Now run: npm run build && pm2 restart all"
+echo "All files updated. Now run: npm run build && pm2 restart all"
