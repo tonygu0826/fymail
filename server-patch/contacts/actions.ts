@@ -51,7 +51,7 @@ export async function deleteContactAction(formData: FormData) {
 
   try {
     // Remove related campaign targets first
-    await prisma.campaignTarget.deleteMany({ where: { contactId: id } });
+    await prisma.campaignContact.deleteMany({ where: { contactId: id } });
     await prisma.contact.delete({ where: { id } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to delete contact";

@@ -81,7 +81,7 @@ export async function deleteTemplateAction(formData: FormData) {
     const campaigns = await prisma.campaign.findMany({ where: { templateId: id }, select: { id: true } });
     if (campaigns.length > 0) {
       const campaignIds = campaigns.map(c => c.id);
-      await prisma.campaignTarget.deleteMany({ where: { campaignId: { in: campaignIds } } });
+      await prisma.campaignContact.deleteMany({ where: { campaignId: { in: campaignIds } } });
       await prisma.campaign.deleteMany({ where: { templateId: id } });
     }
     await prisma.emailTemplate.delete({ where: { id } });
