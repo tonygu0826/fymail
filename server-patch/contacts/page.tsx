@@ -20,6 +20,7 @@ type ContactsPageProps = {
 
 export default async function ContactsPage({ searchParams }: ContactsPageProps) {
   const contacts = await getContacts({ orderBy: 'priority' });
+  const isDatabase = contacts.source === "database";
 
   return (
     <>
@@ -55,7 +56,7 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
                     <th className="px-4 py-3">国家</th>
                     <th className="px-4 py-3">状态</th>
                     <th className="px-4 py-3">创建时间</th>
-                    <th className="px-4 py-3 text-right">操作</th>
+                    {isDatabase && <th className="px-4 py-3 text-right">操作</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-theme-border bg-theme-card">
@@ -79,9 +80,11 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
                       <td className="px-4 py-3 text-theme-body text-xs">
                         {formatDate(contact.createdAt)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <DeleteContactButton contactId={contact.id} action={deleteContactAction} />
-                      </td>
+                      {isDatabase && (
+                        <td className="px-4 py-3 text-right">
+                          <DeleteContactButton contactId={contact.id} action={deleteContactAction} />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

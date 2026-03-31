@@ -77,6 +77,13 @@ export async function deleteTemplateAction(formData: FormData) {
   const { prisma } = await import("@/lib/db");
 
   try {
+    // Remove related campaign targets and campaigns first
+    const campaigns = await prisma.campaign.findMany({ where: { templateId: id }, select: { id: true } });
+    if (campaigns.length > 0) {
+      const campaignIds = campaigns.map(c => c.id);
+      await prisma.campaignTarget.deleteMany({ where: { campaignId: { in: campaignIds } } });
+      await prisma.campaign.deleteMany({ where: { templateId: id } });
+    }
     await prisma.emailTemplate.delete({ where: { id } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to delete template";
