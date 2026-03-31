@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils/cn";
 import { format } from "date-fns";
 
 const SEQ_LABELS: Record<number, string> = {
-  1: "1st email",
-  2: "Follow-up 1",
-  3: "Follow-up 2",
+  1: "首封邮件",
+  2: "跟进 1",
+  3: "跟进 2",
 };
 
 export default function TemplatesPage() {
@@ -60,7 +60,7 @@ export default function TemplatesPage() {
       );
 
       const payload = {
-        name: subject.slice(0, 60) || "Untitled",
+        name: subject.slice(0, 60) || "未命名",
         subject,
         bodyHtml: fullBody,
         bodyText: fullBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
@@ -207,7 +207,7 @@ export default function TemplatesPage() {
                 <input
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="输入邮件主题，如：Partnership opportunity for {{company}}"
+                  placeholder="输入邮件主题，如：与 {{company}} 的合作机会"
                   className="flex-1 text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
                 />
               </div>
@@ -221,7 +221,7 @@ export default function TemplatesPage() {
               <textarea
                 value={bodyHtml}
                 onChange={(e) => setBodyHtml(e.target.value)}
-                placeholder={`Dear {{first_name}},\n\nI hope this message finds you well.\n\nI'm reaching out to explore potential collaboration opportunities between our companies...`}
+                placeholder={`尊敬的 {{first_name}}，\n\n希望您一切顺利。\n\n我写信是为了探讨我们公司之间的潜在合作机会...`}
                 rows={10}
                 className="w-full text-sm bg-transparent border border-border rounded-md px-3 py-2.5 resize-none leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
               />
@@ -236,7 +236,7 @@ export default function TemplatesPage() {
                 <textarea
                   value={signature}
                   onChange={(e) => setSignature(e.target.value)}
-                  placeholder={`Best regards,\nYour Name\nYour Title | Company Name\nPhone: +xx xxx xxxx\nEmail: your@email.com`}
+                  placeholder={`此致敬礼，\n您的姓名\n您的职位 | 公司名称\n电话：+xx xxx xxxx\n邮箱：your@email.com`}
                   rows={4}
                   className="w-full text-sm bg-muted/30 border border-border rounded-md px-3 py-2.5 resize-none leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
                 />
@@ -329,14 +329,14 @@ function TemplateCard({
       {/* Footer */}
       <div className="flex items-center justify-between">
         <span className="text-[10px] text-muted-foreground">
-          Updated {format(new Date(t.updatedAt), "MMM d")}
+          更新于 {format(new Date(t.updatedAt), "MM月dd日")}
         </span>
         <div
           className={cn(
             "w-1.5 h-1.5 rounded-full",
             t.isActive ? "bg-emerald-500" : "bg-gray-300"
           )}
-          title={t.isActive ? "Active" : "Inactive"}
+          title={t.isActive ? "已启用" : "未启用"}
         />
       </div>
     </div>

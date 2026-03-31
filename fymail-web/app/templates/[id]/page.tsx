@@ -138,7 +138,7 @@ export default function TemplateEditorPage() {
   return (
     <>
       <PageHeader
-        title={isNew ? "New Template" : "Edit Template"}
+        title={isNew ? "新建模板" : "编辑模板"}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -146,14 +146,14 @@ export default function TemplateEditorPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-accent transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Back
+              返回
             </button>
             <button
               onClick={renderPreview}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-md hover:bg-accent transition-colors"
             >
               <Eye className="w-3.5 h-3.5" />
-              Preview
+              预览
             </button>
             <button
               onClick={() => saveMutation.mutate()}
@@ -161,7 +161,7 @@ export default function TemplateEditorPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {saveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {isNew ? "Create template" : "Save changes"}
+              {isNew ? "创建模板" : "保存修改"}
             </button>
           </div>
         }
@@ -183,14 +183,14 @@ export default function TemplateEditorPage() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                {t === "edit" ? "Editor" : "Preview"}
+                {t === "edit" ? "编辑器" : "预览"}
               </button>
             ))}
           </div>
 
           {tab === "edit" ? (
             <div className="space-y-4">
-              {field("Template name *",
+              {field("模板名称 *",
                 <input
                   value={form.name}
                   onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
@@ -198,19 +198,19 @@ export default function TemplateEditorPage() {
                   className={inputCls}
                 />
               )}
-              {field("Subject line *",
+              {field("邮件主题 *",
                 <input
                   value={form.subject}
                   onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
-                  placeholder="Partnership opportunity for {{company}} — FYWarehouse"
+                  placeholder="与 {{company}} 的合作机会 — FYWarehouse"
                   className={inputCls}
                 />
               )}
-              {field("Email body (HTML supported) *",
+              {field("邮件正文（支持 HTML）*",
                 <textarea
                   value={form.bodyHtml}
                   onChange={(e) => setForm((p) => ({ ...p, bodyHtml: e.target.value }))}
-                  placeholder={`Dear {{first_name}},\n\nI hope this message finds you well...`}
+                  placeholder={`尊敬的 {{first_name}}，\n\n希望您一切顺利...`}
                   rows={16}
                   className={cn(inputCls, "resize-none font-mono text-xs leading-relaxed")}
                 />
@@ -218,7 +218,7 @@ export default function TemplateEditorPage() {
               {/* Detected variables */}
               {usedVars.length > 0 && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground">Detected vars:</span>
+                  <span className="text-xs text-muted-foreground">检测到的变量：</span>
                   {usedVars.map((v) => (
                     <span
                       key={v}
@@ -233,7 +233,7 @@ export default function TemplateEditorPage() {
           ) : (
             <div className="border border-border rounded-xl p-6 bg-white dark:bg-card min-h-[400px]">
               <div className="mb-4 pb-4 border-b border-border">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Subject</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">主题</p>
                 <p className="text-sm font-medium"
                   dangerouslySetInnerHTML={{
                     __html: form.subject.replace(
@@ -256,7 +256,7 @@ export default function TemplateEditorPage() {
           {/* Variable picker */}
           <div className="border border-border rounded-xl p-4">
             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-              Insert Variable
+              插入变量
             </h4>
             <div className="space-y-1">
               {AVAILABLE_VARS.map((v) => (
@@ -275,31 +275,31 @@ export default function TemplateEditorPage() {
           {/* Metadata */}
           <div className="border border-border rounded-xl p-4 space-y-3">
             <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-              Metadata
+              元数据
             </h4>
-            {field("Category",
+            {field("分类",
               <select value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} className={inputCls}>
                 {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             )}
-            {field("Target market",
+            {field("目标市场",
               <select value={form.targetMarket} onChange={(e) => setForm((p) => ({ ...p, targetMarket: e.target.value }))} className={inputCls}>
                 {MARKET_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             )}
-            {field("Sequence order",
+            {field("发送顺序",
               <select value={form.sequenceOrder} onChange={(e) => setForm((p) => ({ ...p, sequenceOrder: Number(e.target.value) }))} className={inputCls}>
-                <option value={1}>1st email</option>
-                <option value={2}>Follow-up 1</option>
-                <option value={3}>Follow-up 2</option>
+                <option value={1}>首封邮件</option>
+                <option value={2}>跟进 1</option>
+                <option value={3}>跟进 2</option>
               </select>
             )}
-            {field("Language",
+            {field("语言",
               <select value={form.language} onChange={(e) => setForm((p) => ({ ...p, language: e.target.value }))} className={inputCls}>
-                <option value="en">English</option>
-                <option value="de">German</option>
-                <option value="nl">Dutch</option>
-                <option value="fr">French</option>
+                <option value="en">英语</option>
+                <option value="de">德语</option>
+                <option value="nl">荷兰语</option>
+                <option value="fr">法语</option>
               </select>
             )}
             <label className="flex items-center gap-2 cursor-pointer">
@@ -309,7 +309,7 @@ export default function TemplateEditorPage() {
                 onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
                 className="rounded border-border accent-primary"
               />
-              <span className="text-xs text-muted-foreground">Active (available in campaigns)</span>
+              <span className="text-xs text-muted-foreground">启用（可在活动中使用）</span>
             </label>
           </div>
         </div>
