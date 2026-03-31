@@ -3,28 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Copy, Pencil, Trash2, FileText } from "lucide-react";
+import { Plus, Search, Copy, Pencil, Trash2, FileText, Send, Loader2 } from "lucide-react";
 import { templatesApi, Template } from "@/lib/api/templates";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/common/empty-state";
 import { cn } from "@/lib/utils/cn";
 import { format } from "date-fns";
-
-const CATEGORIES = [
-  { value: "", label: "全部分类" },
-  { value: "lcl", label: "LCL" },
-  { value: "warehouse", label: "Warehouse" },
-  { value: "general", label: "General" },
-];
-
-const MARKETS = [
-  { value: "", label: "全部市场" },
-  { value: "de", label: "Germany" },
-  { value: "nl", label: "Netherlands" },
-  { value: "gb", label: "UK" },
-  { value: "fr", label: "France" },
-  { value: "all", label: "Global" },
-];
 
 const SEQ_LABELS: Record<number, string> = {
   1: "1st email",
@@ -36,16 +20,17 @@ export default function TemplatesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [market, setMarket] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Create form state
+  const [subject, setSubject] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [signature, setSignature] = useState("");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["templates", { category, market }],
-    queryFn: () =>
-      templatesApi.list({
-        category: category || undefined,
-        targetMarket: market || undefined,
-      }),
+    queryKey: ["templates"],
+    queryFn: () => templatesApi.list(),
   });
 
   const deleteMutation = useMutation({
@@ -59,6 +44,76 @@ export default function TemplatesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["templates"] }),
   });
 
+  const saveMutation = useMutation({
+    mutationFn: () => {
+      const fullBody = signature
+        ? `${bodyHtml}\n\n${signature}`
+        : bodyHtml;
+
+      // Extract variables
+      const usedVars = Array.from(
+        new Set(
+          ((fullBody + subject).match(/\{\{(\w+)\}\}/g) ?? []).map(
+            (m) => m.slice(2, -2)
+          )
+        )
+      );
+
+      const payload = {
+        name: subject.slice(0, 60) || "Untitled",
+        subject,
+        bodyHtml: fullBody,
+        bodyText: fullBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+        variables: usedVars,
+        category: "general",
+        targetMarket: "all",
+        sequenceOrder: 1,
+        language: "en",
+        isActive: true,
+      };
+
+      if (editingId) {
+        return templatesApi.update(editingId, payload);
+      }
+      return templatesApi.create(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      resetForm();
+    },
+  });
+
+  const resetForm = () => {
+    setSubject("");
+    setBodyHtml("");
+    setSignature("");
+    setShowCreate(false);
+    setEditingId(null);
+  };
+
+  const startEdit = (t: Template) => {
+    // Try to split signature from body (look for common signature patterns)
+    const body = t.bodyHtml;
+    const sigSeparators = ["\n\n--\n", "\n\nBest regards", "\n\nKind regards", "\n\nBest,", "\n\nRegards,", "\n\nSincerely"];
+    let mainBody = body;
+    let sig = "";
+
+    for (const sep of sigSeparators) {
+      const idx = body.lastIndexOf(sep);
+      if (idx !== -1) {
+        mainBody = body.slice(0, idx);
+        sig = body.slice(idx).replace(/^\n\n/, "");
+        break;
+      }
+    }
+
+    setSubject(t.subject);
+    setBodyHtml(mainBody);
+    setSignature(sig);
+    setEditingId(t.id);
+    setShowCreate(true);
+  };
+
   const templates = (data?.data ?? []).filter(
     (t) =>
       !search ||
@@ -69,88 +124,149 @@ export default function TemplatesPage() {
   return (
     <>
       <PageHeader
-        title="Templates"
-        description="管理开发信邮件模板"
-        actions={
-          <button
-            onClick={() => router.push("/templates/new")}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            新建模板
-          </button>
-        }
+        title="模板管理"
+        description="管理和创建开发信邮件模板"
       />
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            placeholder="搜索模板..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-          />
+      {/* === Template List Section === */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-foreground">模板列表</h2>
+          <div className="relative max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="搜索模板..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
         </div>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-        <select
-          value={market}
-          onChange={(e) => setMarket(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          {MARKETS.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-40 bg-muted rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : templates.length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="暂无模板"
+            description="在下方创建第一个开发信模板"
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {templates.map((t) => (
+              <TemplateCard
+                key={t.id}
+                template={t}
+                onEdit={() => startEdit(t)}
+                onDuplicate={() => duplicateMutation.mutate(t)}
+                onDelete={() => {
+                  if (confirm(`确认删除 "${t.name}"?`)) deleteMutation.mutate(t.id);
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-48 bg-muted rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : templates.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="暂无模板"
-          description="创建第一个开发信模板，在活动中使用."
-          action={
+      {/* === Create / Edit Template Section === */}
+      <div className="border-t border-border pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-foreground">
+            {editingId ? "编辑模板" : "创建模板"}
+          </h2>
+          {!showCreate ? (
             <button
-              onClick={() => router.push("/templates/new")}
+              onClick={() => { resetForm(); setShowCreate(true); }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               新建模板
             </button>
-          }
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {templates.map((t) => (
-            <TemplateCard
-              key={t.id}
-              template={t}
-              onEdit={() => router.push(`/templates/${t.id}`)}
-              onDuplicate={() => duplicateMutation.mutate(t)}
-              onDelete={() => {
-                if (confirm(`Delete "${t.name}"?`)) deleteMutation.mutate(t.id);
-              }}
-            />
-          ))}
+          ) : (
+            <button
+              onClick={resetForm}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              取消
+            </button>
+          )}
         </div>
-      )}
+
+        {showCreate && (
+          <div className="border border-border rounded-xl bg-card overflow-hidden max-w-2xl">
+            {/* Email-like layout */}
+            <div className="bg-muted/30 border-b border-border">
+              {/* Subject field - like email subject line */}
+              <div className="flex items-center gap-3 px-5 py-3 border-b border-border/50">
+                <span className="text-xs font-medium text-muted-foreground shrink-0 w-14">主题</span>
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="输入邮件主题，如：Partnership opportunity for {{company}}"
+                  className="flex-1 text-sm bg-transparent border-none outline-none placeholder:text-muted-foreground/50"
+                />
+              </div>
+            </div>
+
+            {/* Body field - like email content area */}
+            <div className="px-5 py-4">
+              <div className="mb-1.5">
+                <span className="text-xs font-medium text-muted-foreground">正文内容</span>
+              </div>
+              <textarea
+                value={bodyHtml}
+                onChange={(e) => setBodyHtml(e.target.value)}
+                placeholder={`Dear {{first_name}},\n\nI hope this message finds you well.\n\nI'm reaching out to explore potential collaboration opportunities between our companies...`}
+                rows={10}
+                className="w-full text-sm bg-transparent border border-border rounded-md px-3 py-2.5 resize-none leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+              />
+            </div>
+
+            {/* Signature field - at the bottom like email signature */}
+            <div className="px-5 pb-4">
+              <div className="border-t border-dashed border-border/60 pt-3">
+                <div className="mb-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">邮件签名</span>
+                </div>
+                <textarea
+                  value={signature}
+                  onChange={(e) => setSignature(e.target.value)}
+                  placeholder={`Best regards,\nYour Name\nYour Title | Company Name\nPhone: +xx xxx xxxx\nEmail: your@email.com`}
+                  rows={4}
+                  className="w-full text-sm bg-muted/30 border border-border rounded-md px-3 py-2.5 resize-none leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+                />
+              </div>
+            </div>
+
+            {/* Action bar */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3 bg-muted/20 border-t border-border">
+              <button
+                onClick={resetForm}
+                className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => saveMutation.mutate()}
+                disabled={!subject || !bodyHtml || saveMutation.isPending}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {saveMutation.isPending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
+                {editingId ? "保存修改" : "创建模板"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -183,19 +299,21 @@ function TemplateCard({
           <button
             onClick={onDuplicate}
             className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
-            title="Duplicate"
+            title="复制"
           >
             <Copy className="w-3 h-3" />
           </button>
           <button
             onClick={onEdit}
             className="p-1 rounded hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            title="编辑"
           >
             <Pencil className="w-3 h-3" />
           </button>
           <button
             onClick={onDelete}
             className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-muted-foreground hover:text-red-600"
+            title="删除"
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -208,29 +326,10 @@ function TemplateCard({
           t.bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
       </div>
 
-      {/* Badges */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {t.targetMarket && (
-          <Badge color="blue">{t.targetMarket.toUpperCase()}</Badge>
-        )}
-        {t.category && (
-          <Badge color="purple">{t.category}</Badge>
-        )}
-        {t.sequenceOrder && (
-          <Badge color="gray">{SEQ_LABELS[t.sequenceOrder] ?? `Seq ${t.sequenceOrder}`}</Badge>
-        )}
-        {t.variables.slice(0, 2).map((v) => (
-          <Badge key={v} color="teal">{`{{${v}}}`}</Badge>
-        ))}
-        {t.variables.length > 2 && (
-          <Badge color="gray">+{t.variables.length - 2}</Badge>
-        )}
-      </div>
-
       {/* Footer */}
-      <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <span className="text-[10px] text-muted-foreground">
-          {t.language.toUpperCase()} · Updated {format(new Date(t.updatedAt), "MMM d")}
+          Updated {format(new Date(t.updatedAt), "MMM d")}
         </span>
         <div
           className={cn(
@@ -241,26 +340,5 @@ function TemplateCard({
         />
       </div>
     </div>
-  );
-}
-
-function Badge({
-  color,
-  children,
-}: {
-  color: "blue" | "purple" | "teal" | "gray";
-  children: React.ReactNode;
-}) {
-  const cls = {
-    blue: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    purple: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-    teal: "bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300",
-    gray: "bg-muted text-muted-foreground",
-  }[color];
-
-  return (
-    <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", cls)}>
-      {children}
-    </span>
   );
 }
