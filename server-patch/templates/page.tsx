@@ -10,6 +10,7 @@ import { getTemplates, mvpOptions } from "@/lib/app-data";
 import { formatDate } from "@/lib/utils";
 import { createTemplateAction, deleteTemplateAction } from "@/app/(app)/templates/actions";
 import { DeleteButton } from "@/app/(app)/templates/delete-button";
+import TemplateCreator from "@/app/(app)/templates/template-creator";
 
 type TemplatesPageProps = {
   searchParams?: {
@@ -43,7 +44,7 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
 
       {/* === 模板列表 === */}
       <section className="space-y-6">
-        <Panel title="模板列表" description={`来源：${templates.source}`}>
+        <Panel title="模板列表" description={`共 ${templates.items.length} 个模板`}>
           {templates.items.length > 0 ? (
             <div className="space-y-4">
               {templates.items.map((template) => (
@@ -75,68 +76,18 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
           ) : (
             <EmptyState
               title="暂无模板"
-              description="在下方创建第一个外发模板。"
+              description="在下方选择预设模板样式创建。"
             />
           )}
         </Panel>
 
         {/* === 创建模板 === */}
+        <div id="create-template" />
         <Panel
           title="创建模板"
-          description="填写邮件主题、正文内容和签名，按邮件实际位置排列。"
+          description="选择预设商务邮件模板，自动匹配格式和换行，可预览邮件样式。"
         >
-          <form id="create-template" action={createTemplateAction} className="overflow-hidden rounded-2xl border border-theme-border">
-            {/* 主题 - 邮件最顶部 */}
-            <div className="border-b border-theme-border bg-theme-card-muted px-5 py-4">
-              <div className="flex items-center gap-3">
-                <span className="shrink-0 text-sm font-medium text-theme-secondary">主题</span>
-                <input
-                  name="subject"
-                  className="flex-1 bg-transparent text-sm text-theme-heading outline-none placeholder:text-theme-secondary/50"
-                  placeholder="输入邮件主题，如：Reliable LCL to Canada for {{companyName}}"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* 正文内容 - 邮件中间 */}
-            <div className="px-5 py-4">
-              <label className="block space-y-2 text-sm text-theme-body">
-                <span className="font-medium text-theme-secondary">正文内容</span>
-                <textarea
-                  name="bodyHtml"
-                  className="min-h-[240px] w-full rounded-xl border border-theme-border bg-theme-card px-4 py-3 text-sm leading-relaxed placeholder:text-theme-secondary/50"
-                  placeholder={"Dear {{contactName}},\n\nI hope this message finds you well.\n\nI am reaching out to explore potential partnership opportunities between our companies..."}
-                  required
-                />
-              </label>
-            </div>
-
-            {/* 邮件签名 - 邮件底部 */}
-            <div className="border-t border-dashed border-theme-border/60 px-5 py-4">
-              <label className="block space-y-2 text-sm text-theme-body">
-                <span className="font-medium text-theme-secondary">邮件签名</span>
-                <textarea
-                  name="bodyText"
-                  className="min-h-[120px] w-full rounded-xl border border-theme-border bg-theme-card-muted px-4 py-3 text-sm leading-relaxed placeholder:text-theme-secondary/50"
-                  placeholder={"Best regards,\nYour Name\nYour Title | Company Name\nPhone: +xx xxx xxxx\nEmail: your@email.com"}
-                />
-              </label>
-            </div>
-
-            {/* 隐藏的默认值 */}
-            <input type="hidden" name="language" value="EN" />
-            <input type="hidden" name="status" value="DRAFT" />
-            <input type="hidden" name="variables" value="companyName, contactName, countryCode" />
-            <input type="hidden" name="notes" value="" />
-
-            {/* 提交按钮 */}
-            <div className="flex justify-end border-t border-theme-border bg-theme-card-muted/50 px-5 py-3">
-              <button className="inline-flex items-center justify-center rounded-2xl bg-theme-button px-5 py-3 text-sm font-semibold text-white hover:bg-theme-button-hover">
-                保存模板
-              </button>
-            </div>
-          </form>
+          <TemplateCreator createAction={createTemplateAction} />
         </Panel>
       </section>
     </>

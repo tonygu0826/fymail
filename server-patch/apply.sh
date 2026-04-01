@@ -8,6 +8,7 @@ echo "=== Applying template updates ==="
 TEMPLATES_DIR="$TARGET_DIR/app/(app)/templates"
 cp "$SCRIPT_DIR/templates/actions.ts" "$TEMPLATES_DIR/actions.ts"
 cp "$SCRIPT_DIR/templates/delete-button.tsx" "$TEMPLATES_DIR/delete-button.tsx"
+cp "$SCRIPT_DIR/templates/template-creator.tsx" "$TEMPLATES_DIR/template-creator.tsx"
 cp "$SCRIPT_DIR/templates/page.tsx" "$TEMPLATES_DIR/page.tsx"
 echo "  templates: done"
 
