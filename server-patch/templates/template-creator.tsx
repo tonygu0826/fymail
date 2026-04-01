@@ -146,6 +146,10 @@ export default function TemplateCreator({
     formData.set("subject", subject);
     formData.set("bodyHtml", fullHtml);
     formData.set("bodyText", fullHtml.replace(/<[^>]+>/g, "\n").replace(/\n{3,}/g, "\n\n").trim());
+    formData.set("language", "EN");
+    formData.set("status", "DRAFT");
+    formData.set("variables", "companyName, contactName, countryCode");
+    formData.set("notes", "");
 
     try {
       await createAction(formData);
