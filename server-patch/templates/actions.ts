@@ -21,6 +21,17 @@ function getTemplatePayload(formData: FormData) {
 }
 
 export async function createTemplateAction(formData: FormData) {
+  // Auto-generate name and slug from subject if empty
+  const subject = getFormStringValue(formData, "subject") || "Untitled";
+  const name = getFormStringValue(formData, "name") || subject.slice(0, 60);
+  const slug = getFormStringValue(formData, "slug") || name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "template-" + Date.now();
+
+  formData.set("name", name);
+  formData.set("slug", slug);
+  if (!getFormStringValue(formData, "status")) {
+    formData.set("status", "DRAFT");
+  }
+
   const parsed = getTemplatePayload(formData);
 
   if (!parsed.success) {

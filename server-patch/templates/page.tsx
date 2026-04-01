@@ -125,9 +125,8 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
             </div>
 
             {/* 隐藏的默认值 */}
-            <input type="hidden" name="name" value="" />
-            <input type="hidden" name="slug" value="" />
             <input type="hidden" name="language" value="EN" />
+            <input type="hidden" name="status" value="DRAFT" />
             <input type="hidden" name="variables" value="companyName, contactName, countryCode" />
             <input type="hidden" name="notes" value="" />
 
