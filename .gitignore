@@ -42,6 +42,7 @@ data/
 *.backup
 prisma/schema.prisma.backup
 *.tmp
+.git.backup-*/
 
 # ad-hoc test scripts at repo root
 /test-*.js
