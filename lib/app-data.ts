@@ -42,8 +42,17 @@ const fallbackData = {
       contactName: "Anna Meyer",
       email: "anna@forwarder.example",
       countryCode: "DE",
-      status: "READY",
+      status: "READY" as ContactStatus,
+      priority: 5,
+      score: 8.5,
       tags: ["germany", "lcl"],
+      notes: "Fallback contact",
+      ownerId: "operator_fallback",
+      marketRegion: "DACH",
+      jobTitle: "Sales Manager",
+      source: "fallback",
+      lastContactedAt: null,
+      updatedAt: new Date("2026-03-18T08:45:00Z"),
       createdAt: new Date("2026-03-18T08:45:00Z"),
     },
     {
@@ -52,8 +61,17 @@ const fallbackData = {
       contactName: "Lars de Vries",
       email: "lars@nordiccargo.example",
       countryCode: "NL",
-      status: "NEW",
+      status: "NEW" as ContactStatus,
+      priority: 3,
+      score: 6.2,
       tags: ["netherlands"],
+      notes: "Fallback contact",
+      ownerId: "operator_fallback",
+      marketRegion: "Benelux",
+      jobTitle: "Operations Director",
+      source: "fallback",
+      lastContactedAt: null,
+      updatedAt: new Date("2026-03-17T12:00:00Z"),
       createdAt: new Date("2026-03-17T12:00:00Z"),
     },
     {
@@ -62,8 +80,17 @@ const fallbackData = {
       contactName: "Emma Clarke",
       email: "emma@channelfreight.example",
       countryCode: "UK",
-      status: "CONTACTED",
+      status: "CONTACTED" as ContactStatus,
+      priority: 8,
+      score: 9.1,
       tags: ["uk", "priority"],
+      notes: "Fallback contact",
+      ownerId: "operator_fallback",
+      marketRegion: "UK",
+      jobTitle: "Business Development",
+      source: "fallback",
+      lastContactedAt: new Date("2026-03-20T10:00:00Z"),
+      updatedAt: new Date("2026-03-20T10:00:00Z"),
       createdAt: new Date("2026-03-16T15:20:00Z"),
     },
   ],
@@ -245,22 +272,75 @@ export async function getTemplateById(id: string) {
   }
 }
 
-export async function getContacts() {
+export async function getContacts(options?: {
+  orderBy?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
   if (!isDatabaseConfigured()) {
-    return { source: "fallback", items: fallbackData.contacts };
+    return { source: "fallback" as const, items: fallbackData.contacts, total: fallbackData.contacts.length, page: 1, pageSize: 15 };
   }
 
   try {
-    const items = await prisma.contact.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    let orderBy: Array<Record<string, 'asc' | 'desc'>> = [{ createdAt: "desc" }];
+    if (options?.orderBy === 'priority') {
+      orderBy = [{ priority: 'desc' }, { createdAt: "desc" }];
+    } else if (options?.orderBy === 'score') {
+      orderBy = [{ score: 'desc' }, { createdAt: "desc" }];
+    }
 
-    return { source: "database", items };
+    // 构建 where 条件
+    const conditions: any[] = [];
+
+    if (options?.search) {
+      conditions.push({
+        OR: [
+          { companyName: { contains: options.search, mode: "insensitive" as const } },
+          { contactName: { contains: options.search, mode: "insensitive" as const } },
+          { email: { contains: options.search, mode: "insensitive" as const } },
+          { countryCode: { contains: options.search, mode: "insensitive" as const } },
+        ],
+      });
+    }
+
+    if (options?.status) {
+      conditions.push({ status: options.status });
+    }
+
+    if (options?.dateFrom) {
+      conditions.push({ createdAt: { gte: new Date(options.dateFrom) } });
+    }
+
+    if (options?.dateTo) {
+      // dateTo 加一天，包含当天
+      const end = new Date(options.dateTo);
+      end.setDate(end.getDate() + 1);
+      conditions.push({ createdAt: { lt: end } });
+    }
+
+    const where = conditions.length > 0 ? { AND: conditions } : undefined;
+
+    const page = Math.max(1, options?.page ?? 1);
+    const pageSize = Math.max(1, Math.min(options?.pageSize ?? 20, 100));
+
+    const [items, total] = await Promise.all([
+      prisma.contact.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.contact.count({ where }),
+    ]);
+
+    return { source: "database" as const, items, total, page, pageSize };
   } catch (error) {
     if (isPrismaRuntimeError(error)) {
-      return { source: "fallback", items: fallbackData.contacts, databaseError: error.message };
+      return { source: "fallback" as const, items: fallbackData.contacts, total: fallbackData.contacts.length, page: 1, pageSize: 15, databaseError: error.message };
     }
 
     throw error;
@@ -326,6 +406,8 @@ export async function getCampaignComposerData() {
         contactName: contact.contactName,
         email: contact.email,
         status: contact.status,
+        countryCode: contact.countryCode ?? 'XX',
+        createdAt: contact.createdAt ?? new Date().toISOString(),
       })),
     };
   }
@@ -352,6 +434,8 @@ export async function getCampaignComposerData() {
           contactName: true,
           email: true,
           status: true,
+          countryCode: true,
+          createdAt: true,
         },
       }),
     ]);

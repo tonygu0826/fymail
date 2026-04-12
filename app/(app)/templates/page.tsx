@@ -8,7 +8,9 @@ import { Panel } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getTemplates, mvpOptions } from "@/lib/app-data";
 import { formatDate } from "@/lib/utils";
-import { createTemplateAction } from "@/app/(app)/templates/actions";
+import { createTemplateAction, deleteTemplateAction } from "@/app/(app)/templates/actions";
+import { DeleteButton } from "@/app/(app)/templates/delete-button";
+import TemplateCreator from "@/app/(app)/templates/template-creator";
 
 type TemplatesPageProps = {
   searchParams?: {
@@ -23,16 +25,16 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
   return (
     <>
       <PageHeader
-        eyebrow="Templates"
-        title="Template management"
-        description="Create, review, and edit outbound templates backed by Prisma. The MVP keeps editing plain and durable."
+        eyebrow="模板"
+        title="模板管理"
+        description="创建、审阅和编辑基于Prisma的外发模板。MVP保持编辑简洁耐用。"
         actions={
           <a
             href="#create-template"
-            className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900"
+            className="inline-flex items-center gap-2 rounded-2xl border border-theme-border bg-theme-card px-4 py-3 text-sm font-semibold text-theme-heading hover:bg-theme-card-muted"
           >
             <Plus className="h-4 w-4" />
-            New template
+            新建模板
           </a>
         }
       />
@@ -40,146 +42,52 @@ export default async function TemplatesPage({ searchParams }: TemplatesPageProps
       {searchParams?.message ? <FlashMessage message={searchParams.message} /> : null}
       {searchParams?.error ? <FlashMessage tone="error" message={searchParams.error} /> : null}
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-        <Panel title="Templates" description={`Source: ${templates.source}`}>
+      {/* === 模板列表 === */}
+      <section className="space-y-6">
+        <Panel title="模板列表" description={`共 ${templates.items.length} 个模板`}>
           {templates.items.length > 0 ? (
             <div className="space-y-4">
               {templates.items.map((template) => (
-                <div key={template.id} className="rounded-2xl border border-slate-200 p-4">
+                <div key={template.id} className="rounded-2xl border border-theme-border p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h3 className="font-semibold text-slate-900">{template.name}</h3>
-                      <p className="mt-1 text-sm text-slate-600">
+                      <h3 className="font-semibold text-theme-heading">{template.name}</h3>
+                      <p className="mt-1 text-sm text-theme-secondary">
                         {template.subject} · {template.language}
                       </p>
                     </div>
                     <StatusPill status={template.status} />
                   </div>
-                  <p className="mt-3 text-xs uppercase tracking-[0.16em] text-slate-500">
-                    Updated {formatDate(template.updatedAt)}
+                  <p className="mt-3 text-xs uppercase tracking-[0.16em] text-theme-secondary">
+                    更新于 {formatDate(template.updatedAt)}
                   </p>
-                  <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                  <div className="mt-4 flex items-center justify-between text-sm text-theme-secondary">
                     <span className="font-mono text-xs uppercase tracking-[0.16em]">{template.slug}</span>
-                    <Link href={`/templates/${template.id}`} className="font-semibold text-teal-700">
-                      Edit template
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link href={`/templates/${template.id}`} className="font-semibold text-teal-700 hover:text-teal-800">
+                        编辑
+                      </Link>
+                      <DeleteButton templateId={template.id} action={deleteTemplateAction} />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <EmptyState
-              title="No templates yet"
-              description="Create the first outbound template from the form on this page."
+              title="暂无模板"
+              description="在下方选择预设模板样式创建。"
             />
           )}
         </Panel>
 
+        {/* === 创建模板 === */}
+        <div id="create-template" />
         <Panel
-          title="Create template"
-          description="A minimal authoring form for locally testable template persistence."
-          className="h-fit"
+          title="创建模板"
+          description="选择预设商务邮件模板，自动匹配格式和换行，可预览邮件样式。"
         >
-          <form id="create-template" action={createTemplateAction} className="space-y-4">
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Name</span>
-              <input
-                name="name"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="EU LCL Intro"
-                required
-              />
-            </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Slug</span>
-              <input
-                name="slug"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="eu-lcl-intro"
-                required
-              />
-            </label>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block space-y-2 text-sm text-slate-700">
-                <span className="font-medium">Language</span>
-                <select
-                  name="language"
-                  defaultValue="EN"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                >
-                  {mvpOptions.languages.map((language) => (
-                    <option key={language} value={language}>
-                      {language}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block space-y-2 text-sm text-slate-700">
-                <span className="font-medium">Status</span>
-                <select
-                  name="status"
-                  defaultValue="DRAFT"
-                  className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                >
-                  {mvpOptions.templateStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Subject</span>
-              <input
-                name="subject"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Reliable LCL to Canada for European forwarders"
-                required
-              />
-            </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Body HTML</span>
-              <textarea
-                name="bodyHtml"
-                className="min-h-40 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="<p>Hello {{contactName}},</p>"
-                required
-              />
-            </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Body text</span>
-              <textarea
-                name="bodyText"
-                className="min-h-28 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Hello {{contactName}},"
-              />
-            </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Variables</span>
-              <input
-                name="variables"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="companyName, contactName, countryCode"
-              />
-            </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Notes</span>
-              <textarea
-                name="notes"
-                className="min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Internal notes for the operator"
-              />
-            </label>
-            <button className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
-              Save template
-            </button>
-          </form>
-
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            Variables supported by the data model: `companyName`, `contactName`, `countryCode`.
-            Languages available: {mvpOptions.languages.join(", ")}. Preview rendering stays out of scope in this pass.
-          </div>
+          <TemplateCreator createAction={createTemplateAction} />
         </Panel>
       </section>
     </>

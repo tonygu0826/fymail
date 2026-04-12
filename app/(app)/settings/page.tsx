@@ -3,7 +3,6 @@ import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { FlashMessage } from "@/components/ui/flash-message";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
-import { seedMvpAction } from "@/app/(app)/settings/actions";
 import { getSettingsSummary } from "@/lib/app-data";
 
 type SettingsPageProps = {
@@ -19,154 +18,98 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
-        title="Basic settings page"
-        description="Environment readiness and non-secret application settings. Secret mail credentials stay in environment variables and are never surfaced in the repo."
-        actions={
-          <form action={seedMvpAction}>
-            <button className="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900">
-              Seed local MVP data
-            </button>
-          </form>
-        }
+        eyebrow="设置"
+        title="系统设置"
+        description="环境变量配置状态和数据库连接信息。"
       />
 
       {searchParams?.message ? <FlashMessage message={searchParams.message} /> : null}
       {searchParams?.error ? <FlashMessage tone="error" message={searchParams.error} /> : null}
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Environment readiness" description="Presence check only. Secret values are not displayed.">
+      <section className="space-y-6">
+        <Panel title="SMTP 邮件配置" description="邮件发送服务状态">
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-theme-border p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-theme-secondary">提供商</p>
+                <p className="mt-2 font-medium text-theme-heading">{settings.smtp.provider}</p>
+              </div>
+              <div className="rounded-2xl border border-theme-border p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-theme-secondary">主机 / 端口</p>
+                <p className="mt-2 font-medium text-theme-heading">
+                  {settings.smtp.host ?? "未配置"} : {settings.smtp.port ?? "-"} ({settings.smtp.secure ? "TLS" : "STARTTLS"})
+                </p>
+              </div>
+              <div className="rounded-2xl border border-theme-border p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-theme-secondary">认证状态</p>
+                <p className="mt-2 font-medium text-theme-heading">
+                  用户名: {settings.smtp.authUserConfigured ? "✓" : "✗"} · 密码: {settings.smtp.authPasswordConfigured ? "✓" : "✗"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-theme-border p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-theme-secondary">发件人</p>
+                <p className="mt-2 font-medium text-theme-heading">
+                  {settings.smtp.fromName
+                    ? `${settings.smtp.fromName} <${settings.smtp.fromEmail ?? "未配置"}>`
+                    : settings.smtp.fromEmail ?? "未配置"}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-theme-border bg-theme-card-muted/80 p-4">
+              <p className={`font-semibold ${settings.smtp.ready ? "text-green-700" : "text-red-700"}`}>
+                {settings.smtp.ready ? "✓ SMTP 就绪" : "✗ SMTP 未就绪"}
+              </p>
+              <p className="mt-1 text-sm text-theme-secondary">{settings.smtp.detail}</p>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="数据库状态" description="数据库连接和数据统计">
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-theme-border p-4">
+              <p className={`font-semibold ${settings.database.reachable ? "text-green-700" : "text-red-700"}`}>
+                {settings.database.reachable ? "✓ 数据库已连接" : "✗ 数据库不可达"}
+              </p>
+              <p className="mt-1 text-sm text-theme-secondary">{settings.database.detail}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border border-theme-border p-4 text-center">
+                <p className="text-2xl font-semibold text-theme-heading">{settings.dataCounts.templates}</p>
+                <p className="text-xs text-theme-secondary">模板</p>
+              </div>
+              <div className="rounded-2xl border border-theme-border p-4 text-center">
+                <p className="text-2xl font-semibold text-theme-heading">{settings.dataCounts.contacts}</p>
+                <p className="text-xs text-theme-secondary">联系人</p>
+              </div>
+              <div className="rounded-2xl border border-theme-border p-4 text-center">
+                <p className="text-2xl font-semibold text-theme-heading">{settings.dataCounts.campaigns}</p>
+                <p className="text-xs text-theme-secondary">营销活动</p>
+              </div>
+              <div className="rounded-2xl border border-theme-border p-4 text-center">
+                <p className="text-2xl font-semibold text-theme-heading">{settings.dataCounts.emailLogs}</p>
+                <p className="text-xs text-theme-secondary">邮件日志</p>
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="环境变量" description="检查关键环境变量是否已配置">
           <div className="space-y-3">
             {settings.environment.map((item) => (
-              <div
-                key={item.key}
-                className="flex items-center justify-between rounded-2xl border border-slate-200 p-4"
-              >
-                <span className="font-medium text-slate-900">{item.key}</span>
-                <span className="inline-flex items-center gap-2 text-sm text-slate-600">
+              <div key={item.key} className="flex items-center justify-between rounded-2xl border border-theme-border p-4">
+                <span className="font-medium text-theme-heading">{item.key}</span>
+                <span className="inline-flex items-center gap-2 text-sm">
                   {item.configured ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <><CheckCircle2 className="h-4 w-4 text-emerald-600" /> <span className="text-emerald-600">已配置</span></>
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <><AlertTriangle className="h-4 w-4 text-amber-600" /> <span className="text-amber-600">缺失</span></>
                   )}
-                  {item.configured ? "Configured" : "Missing"}
                 </span>
               </div>
             ))}
           </div>
         </Panel>
-
-        <Panel
-          title="SMTP readiness"
-          description="Safe send-readiness summary only. Passwords and raw secrets are never displayed."
-        >
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Provider</p>
-              <p className="mt-2 font-medium text-slate-900">{settings.smtp.provider}</p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Host</p>
-                <p className="mt-2 font-medium text-slate-900">{settings.smtp.host ?? "Not set"}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Port / Secure</p>
-                <p className="mt-2 font-medium text-slate-900">
-                  {settings.smtp.port ?? "Not set"} / {settings.smtp.secure ? "TLS" : "STARTTLS or plain"}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Auth</p>
-                <p className="mt-2 font-medium text-slate-900">
-                  User: {settings.smtp.authUserConfigured ? "Configured" : "Missing"} · Password:{" "}
-                  {settings.smtp.authPasswordConfigured ? "Configured" : "Missing"}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">From</p>
-                <p className="mt-2 font-medium text-slate-900">
-                  {settings.smtp.fromName
-                    ? `${settings.smtp.fromName} <${settings.smtp.fromEmail ?? "not set"}>`
-                    : settings.smtp.fromEmail ?? "Not set"}
-                </p>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-              <p className="font-semibold text-slate-900">
-                {settings.smtp.ready ? "Manual single-send ready" : "SMTP not ready"}
-              </p>
-              <p className="mt-2 text-sm text-slate-600">{settings.smtp.detail}</p>
-              <p className="mt-3 text-sm text-slate-600">
-                Guardrail: FyMail D1 supports one manual recipient per send only. Queueing, retries,
-                batching, and rate limiting are still out of scope.
-              </p>
-            </div>
-          </div>
-        </Panel>
-
       </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Panel title="App settings" description="Persisted non-secret settings when Prisma is connected, otherwise safe defaults.">
-          <div className="space-y-3">
-            {settings.appSettings.map((setting) => (
-              <div key={setting.key} className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{setting.key}</p>
-                <p className="mt-2 font-medium text-slate-900">{setting.value}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <Panel title="Safe runtime config" description="Useful live values that are safe to show in the UI.">
-          <div className="space-y-3">
-            {settings.publicConfig.map((item) => (
-              <div key={item.key} className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{item.key}</p>
-                <p className="mt-2 font-medium text-slate-900">{item.value}</p>
-                <p className="mt-2 text-sm text-slate-600">{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel title="Stored data" description="Live record counts for the current local database.">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Templates</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{settings.dataCounts.templates}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Contacts</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{settings.dataCounts.contacts}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Campaigns</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{settings.dataCounts.campaigns}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Email Logs</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-950">{settings.dataCounts.emailLogs}</p>
-            </div>
-          </div>
-        </Panel>
-      </section>
-
-      <Panel title="Database readiness" description="Connectivity is checked live from the server.">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-          <p className="font-semibold text-slate-900">
-            {settings.database.reachable ? "Database reachable" : "Database not reachable"}
-          </p>
-          <p className="mt-2 text-sm text-slate-600">{settings.database.detail}</p>
-          <p className="mt-3 text-sm text-slate-600">
-            The seed action writes a local operator, sample template, sample contacts, a draft campaign,
-            and safe non-secret settings rows.
-          </p>
-        </div>
-      </Panel>
     </>
   );
 }

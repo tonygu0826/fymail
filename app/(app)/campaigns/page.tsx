@@ -1,4 +1,4 @@
-import { Play, PlusCircle } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { FlashMessage } from "@/components/ui/flash-message";
@@ -7,7 +7,14 @@ import { Panel } from "@/components/ui/panel";
 import { StatusPill } from "@/components/ui/status-pill";
 import { getCampaignComposerData, getCampaigns, getSettingsSummary, mvpOptions } from "@/lib/app-data";
 import { formatDate } from "@/lib/utils";
-import { createCampaignAction, sendManualSingleEmailAction } from "@/app/(app)/campaigns/actions";
+import {
+  createCampaignAction,
+  executeCampaignAction,
+  deleteCampaignAction,
+  sendManualSingleEmailAction,
+} from "@/app/(app)/campaigns/actions";
+import { CampaignActions } from "@/app/(app)/campaigns/campaign-actions";
+import { ContactSelector } from "@/app/(app)/campaigns/contact-selector";
 
 type CampaignsPageProps = {
   searchParams?: {
@@ -33,218 +40,182 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
   return (
     <>
       <PageHeader
-        eyebrow="Campaigns"
-        title="Campaign drafts"
-        description="Create draft campaigns with a real template and contact selection. Send execution stays intentionally out of scope."
+        eyebrow="营销活动"
+        title="营销活动管理"
+        description="创建营销活动、选择模板和联系人，执行批量邮件发送。"
         actions={
-          <>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900"
-            >
-              <Play className="h-4 w-4" />
-              Draft only
-            </button>
-            <a
-              href="#create-campaign"
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
-            >
-              <PlusCircle className="h-4 w-4" />
-              New campaign
-            </a>
-          </>
+          <a
+            href="#create-campaign"
+            className="inline-flex items-center gap-2 rounded-2xl bg-theme-button px-4 py-3 text-sm font-semibold text-white hover:bg-theme-button-hover"
+          >
+            <PlusCircle className="h-4 w-4" />
+            新建营销活动
+          </a>
         }
       />
 
       {searchParams?.message ? <FlashMessage message={searchParams.message} /> : null}
       {searchParams?.error ? <FlashMessage tone="error" message={searchParams.error} /> : null}
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-        <Panel title="Campaign list" description={`Source: ${campaigns.source}`}>
+      <section className="space-y-6">
+        {/* === 营销活动列表 === */}
+        <Panel title="营销活动列表" description={`来源：${campaigns.source} · 共 ${campaigns.items.length} 个活动`}>
           {campaigns.items.length > 0 ? (
             <div className="space-y-4">
               {campaigns.items.map((campaign) => (
-                <div key={campaign.id} className="rounded-2xl border border-slate-200 p-4">
+                <div key={campaign.id} className="rounded-2xl border border-theme-border p-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h3 className="font-semibold text-slate-900">{campaign.name}</h3>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Template: {campaign.templateName} · Contacts: {campaign.contactCount}
+                      <h3 className="font-semibold text-theme-heading">{campaign.name}</h3>
+                      <p className="mt-1 text-sm text-theme-secondary">
+                        模板：{campaign.templateName} · 联系人：{campaign.contactCount} 人
                       </p>
                     </div>
                     <StatusPill status={campaign.status} />
                   </div>
-                  <p className="mt-3 text-xs uppercase tracking-[0.16em] text-slate-500">
-                    Updated {formatDate(campaign.updatedAt)}
-                  </p>
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs uppercase tracking-[0.16em] text-theme-secondary">
+                      更新于 {formatDate(campaign.updatedAt)}
+                    </p>
+                    <CampaignActions
+                      campaignId={campaign.id}
+                      status={campaign.status}
+                      contactCount={campaign.contactCount}
+                      executeAction={executeCampaignAction}
+                      deleteAction={deleteCampaignAction}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
             <EmptyState
-              title="No campaigns yet"
-              description="Campaigns will appear here once creation flows are added."
+              title="暂无营销活动"
+              description="在下方创建第一个营销活动。"
             />
           )}
         </Panel>
 
+        {/* === 创建营销活动 === */}
         <Panel
-          title="Create draft"
-          description="Choose one template and at least one contact to make the draft campaign operable."
+          title="创建营销活动"
+          description="选择模板和目标联系人，创建营销活动后可直接执行发送。"
         >
           <form id="create-campaign" action={createCampaignAction} className="space-y-4">
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Campaign name</span>
-              <input
-                name="name"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Germany Forwarders Batch"
-                required
-                disabled={!canCreateCampaign}
-              />
-            </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Description</span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block space-y-2 text-sm text-theme-body">
+                <span className="font-medium">营销活动名称 *</span>
+                <input
+                  name="name"
+                  className="w-full rounded-2xl border border-theme-border bg-theme-card px-4 py-3"
+                  placeholder="Germany Forwarders Batch"
+                  required
+                  disabled={!canCreateCampaign}
+                />
+              </label>
+              <label className="block space-y-2 text-sm text-theme-body">
+                <span className="font-medium">模板 *</span>
+                <select
+                  name="templateId"
+                  className="w-full rounded-2xl border border-theme-border bg-theme-card px-4 py-3"
+                  disabled={!canCreateCampaign}
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    选择模板
+                  </option>
+                  {composer.templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} ({template.status})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="block space-y-2 text-sm text-theme-body">
+              <span className="font-medium">描述</span>
               <textarea
                 name="description"
-                className="min-h-24 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                placeholder="Optional internal note for this draft"
+                className="min-h-20 w-full rounded-2xl border border-theme-border bg-theme-card px-4 py-3"
+                placeholder="活动说明（可选）"
                 disabled={!canCreateCampaign}
               />
             </label>
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Template</span>
-              <select
-                name="templateId"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                disabled={!canCreateCampaign}
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Select a template
-                </option>
-                {composer.templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name} ({template.status})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-700">Contacts</span>
-                <span className="text-xs uppercase tracking-[0.16em] text-slate-500">
-                  {composer.contacts.length} available
-                </span>
-              </div>
-              <div className="max-h-80 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                {composer.contacts.length > 0 ? (
-                  composer.contacts.map((contact) => (
-                    <label
-                      key={contact.id}
-                      className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
-                    >
-                      <input
-                        type="checkbox"
-                        name="contactIds"
-                        value={contact.id}
-                        className="mt-1"
-                        disabled={!canCreateCampaign}
-                      />
-                      <span>
-                        <span className="block font-semibold text-slate-900">{contact.companyName}</span>
-                        <span className="mt-1 block text-slate-600">
-                          {[contact.contactName, contact.email, contact.status].filter(Boolean).join(" · ")}
-                        </span>
-                      </span>
-                    </label>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-600">Create contacts before drafting a campaign.</p>
-                )}
-              </div>
-            </div>
+            <ContactSelector contacts={composer.contacts} disabled={!canCreateCampaign} />
             <button
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              className="inline-flex items-center justify-center rounded-2xl bg-theme-button px-4 py-3 text-sm font-semibold text-white hover:bg-theme-button-hover disabled:cursor-not-allowed disabled:bg-theme-border"
               disabled={!canCreateCampaign}
             >
-              Save campaign draft
+              创建营销活动
             </button>
           </form>
+        </Panel>
 
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-            Supported lifecycle states: {mvpOptions.campaignStatuses.join(", ")}. This MVP only creates drafts and stores target contact links.
-          </div>
+        {/* === 手动单次发送 === */}
+        <Panel
+          title="手动单次发送"
+          description="选择模板和联系人，直接发送一封邮件。"
+        >
+          <form action={sendManualSingleEmailAction} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block space-y-2 text-sm text-theme-body">
+                <span className="font-medium">模板</span>
+                <select
+                  name="templateId"
+                  className="w-full rounded-2xl border border-theme-border bg-theme-card px-4 py-3"
+                  defaultValue=""
+                  disabled={!canSendSingle}
+                >
+                  <option value="" disabled>
+                    选择模板
+                  </option>
+                  {composer.templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} ({template.status})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-2 text-sm text-theme-body">
+                <span className="font-medium">联系人</span>
+                <select
+                  name="contactId"
+                  className="w-full rounded-2xl border border-theme-border bg-theme-card px-4 py-3"
+                  defaultValue=""
+                  disabled={!canSendSingle}
+                >
+                  <option value="" disabled>
+                    选择联系人
+                  </option>
+                  {composer.contacts.map((contact) => (
+                    <option key={contact.id} value={contact.id}>
+                      {contact.companyName} · {contact.email} ({contact.status})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-theme-border bg-theme-card-muted px-4 py-3 text-sm text-theme-body">
+              <input type="checkbox" name="confirmSingleSend" className="mt-1" disabled={!canSendSingle} />
+              <span>我确认发送这封邮件</span>
+            </label>
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm text-theme-secondary">
+                SMTP 状态：{settings.smtp.ready ? "✓ 就绪" : "✗ 未就绪"}
+              </div>
+              <button
+                className="inline-flex items-center justify-center rounded-2xl bg-theme-button px-4 py-3 text-sm font-semibold text-white hover:bg-theme-button-hover disabled:cursor-not-allowed disabled:bg-theme-border"
+                disabled={!canSendSingle}
+              >
+                发送邮件
+              </button>
+            </div>
+          </form>
         </Panel>
       </section>
-
-      <Panel
-        title="Manual single send"
-        description="Controlled D1 send path: one selected template to one selected contact through real SMTP."
-      >
-        <form action={sendManualSingleEmailAction} className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Template</span>
-              <select
-                name="templateId"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                defaultValue=""
-                disabled={!canSendSingle}
-              >
-                <option value="" disabled>
-                  Select a template
-                </option>
-                {composer.templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name} ({template.status})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block space-y-2 text-sm text-slate-700">
-              <span className="font-medium">Contact</span>
-              <select
-                name="contactId"
-                className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3"
-                defaultValue=""
-                disabled={!canSendSingle}
-              >
-                <option value="" disabled>
-                  Select a contact
-                </option>
-                {composer.contacts.map((contact) => (
-                  <option key={contact.id} value={contact.id}>
-                    {contact.companyName} · {contact.email} ({contact.status})
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            <input type="checkbox" name="confirmSingleSend" className="mt-1" disabled={!canSendSingle} />
-            <span>
-              I understand this is a guarded manual single-send. FyMail D1 has no queue, rate limiting,
-              batching, retry worker, or unsubscribe automation yet.
-            </span>
-          </label>
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-slate-600">
-              <p>SMTP readiness: {settings.smtp.ready ? "Ready" : "Blocked"}</p>
-              <p>{settings.smtp.detail}</p>
-            </div>
-            <button
-              className="inline-flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-              disabled={!canSendSingle}
-            >
-              Send one real email
-            </button>
-          </div>
-        </form>
-      </Panel>
     </>
   );
 }

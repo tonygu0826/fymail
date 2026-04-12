@@ -15,6 +15,8 @@ const styles = {
   PAUSED: "bg-orange-100 text-orange-800",
   COMPLETED: "bg-emerald-100 text-emerald-800",
   FAILED: "bg-rose-100 text-rose-800",
+  SENT: "bg-green-100 text-green-800",
+  PENDING: "bg-yellow-100 text-yellow-800",
 };
 
 type StatusPillProps = {
