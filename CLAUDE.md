@@ -126,6 +126,68 @@
 
 > 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓
 
+## fymail GitHub 仓库分支地图（重要）
+
+仓库 `tonygu0826/fymail` 内部有**两套完全不同架构**的代码，分布在两条**没有共同祖先**的独立历史线上。改任何分支前必须先确认是哪条线。
+
+### 线 A：monorepo 结构（origin 原始项目）
+
+```
+origin/main  ←  origin/claude/remote-control-setup-ufj6t  ←  origin/server-template-fix
+```
+
+- **架构**：monorepo，顶层是 `fymail-api/`（Fastify + pg-boss）和 `fymail-web/`（独立前端），用 `docker-compose.yml` 串起来
+- **顶层文件**：`fymail-api/`、`fymail-web/`、`docker-compose.yml`、`docker-compose.dev.yml`、`.github/`、`.claude/`、`README.md`、`CLAUDE.md`
+- **最近一批 commit**：Cloudflare Workers 部署配置 + 模板管理页面中文化（`feat: 模板管理页面全部改为中文显示`）
+- **`main` 分支顶端**：`30d5cc9 docs: 添加 CLAUDE.md 项目记忆`（CLAUDE.md 单独以 cherry-pick 的方式落到这条线上）
+- **`server-template-fix`**：从 main `26b9cc8` 分出，有 5 个模板 creator / Prisma 修复 commit
+- **`claude/remote-control-setup-ufj6t`**：和 main 旧 tip `26b9cc8` 同一 commit，疑似某次 Claude session 留下的副本
+- **⚠️ 这条线不是服务器实际跑的代码**
+
+### 线 B：服务器实际运行的单体应用
+
+```
+origin/server-live  ←（本地 master = 同一条线）
+```
+
+- **架构**：Next.js 14 App Router + Prisma + PM2 单进程，**顶层就是 app/ lib/ components/**，没有 fymail-api/fymail-web 子目录
+- **顶层文件**：`app/`、`lib/`、`components/`、`middleware.ts`、`prisma/`、`pages/`、`scripts/`、`chat-server.mjs`、`ecosystem.config.cjs`、`instrumentation.ts`、`open-next.config.ts`、`wrangler.toml`、`server-patch/`、`API-SPEC.md`、`ARCHITECTURE.md`、`DATABASE-SCHEMA.md`、`DESIGN.md`、`ROADMAP.md`、`CLAUDE.md`
+- **顶端 commit**：`2efff21 Sync local modifications to runtime state`
+- **本地仓库**：`/home/ubuntu/fymail/`，本地分支 `master` 跟 `origin/server-live` 是同一条历史
+- **包含的功能模块**（已全部入库）：
+  - auth/login（`lib/auth.ts`、`lib/session.ts`、`lib/user.ts`、`app/login/`、`app/api/auth/`、`lib/audit.ts`）
+  - chat（`app/(app)/chat/`、`app/api/chat/`、`app/api/chat-exec/`、`chat-server.mjs`）
+  - deep-search（`app/(app)/deep-search/`、`app/api/deep-search/`、`lib/deep-search/`、`lib/{brave,gemini,jina,tavily,searxng,realtime}-search.ts`、`lib/search-cache.ts`、`lib/searchHistory.ts`）
+  - intelligence（`app/(app)/intelligence/`、`app/api/intelligence/`、`lib/intelligence.ts`、`components/intelligence/`）
+  - approvals（`app/(app)/approvals/`、`app/api/approvals/`、`lib/approval{,-data}.ts`）
+  - automation（`app/(app)/automation/`、`app/api/automation/`、`lib/automation.ts`）
+  - queue（`app/api/queue/`、`lib/queue.ts`、`lib/queue-stats.ts`）
+  - email logs / webhooks（`app/api/email-logs/`、`app/api/webhooks/`、`lib/email-log-data.ts`）
+  - SEO dashboard（`app/(app)/seo-dashboard/`、`app/api/seo-proxy/`、`lib/seo-api.ts`、`components/seo/`）
+
+### main vs server-live 的差距
+
+```
+git rev-list --left-right --count origin/main...origin/server-live
+→ 11  13
+```
+
+main 独有 11 个 commit（线 A 的 Cloudflare/中文模板/CLAUDE.md），server-live 独有 13 个 commit（线 B 的全部）。两条线之间**无任何共同祖先**，不能简单 merge —— 真要合一定是手工选文件 cherry-pick。
+
+### 操作守则
+
+| 你要做的事 | 应该 push/pull 哪个分支 |
+|---|---|
+| 改服务器上正在跑的代码 | `server-live`（本地 master）|
+| 同步 CLAUDE.md 等跨会话记忆文件 | 两边都推（本地推 server-live，main 也单独提一份 CLAUDE.md commit）|
+| 改 monorepo 版本（fymail-api/fymail-web） | `main` 或 `server-template-fix`，**但要确认这套代码现在还有没有人用**——目前所有线上服务跑的都是线 B |
+| ⚠️ 强 push 覆盖 main 或 server-live | **禁止**。两边都有不可恢复的工作 |
+
+### 已废弃 / 遗留分支
+
+- `claude/remote-control-setup-ufj6t`：和 `main` 旧 tip 26b9cc8 重合，没有独立 commit，建议确认无人引用后删除
+- `server-template-fix`：从 main 分出的修复分支，5 个 commit，是否要 merge 回 main 由 Tony 决定
+
 ## 上一段完整对话
 
 如需查看历史细节（具体代码、错误日志、客户邮件原文），转录文件在：
