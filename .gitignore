@@ -14,3 +14,37 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# build / deploy artifacts
+.open-next/
+.vercel/
+.wrangler/
+.turbo/
+
+# runtime state
+logs/
+*.log
+data/
+.pm2/
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# claude / superpowers
+.superpowers/
+.claude/
+
+# backups and scratch
+*.bak
+*.backup
+prisma/schema.prisma.backup
+*.tmp
+
+# ad-hoc test scripts at repo root
+/test-*.js
+/test-*.ts
+/test_*.js
+/test_*.ts
