@@ -88,6 +88,7 @@
   - `https://*.google-analytics.com`
   - `https://*.analytics.google.com`（仅 script-src/connect-src）
 - **/zh 已清理**：`src/app/zh/` 整个目录已删除；根 `layout.tsx` 的 `alternates.languages` 也移除了 `zh` 条目，避免 hreflang 指向 301 链
+- **`/locations/*` 是 SEO 着陆页集合，不是物理地点**：`/locations/montreal-warehouse`、`/quebec-logistics`、`/montreal-customs-broker`、`/canada-freight-forwarding`、`/montreal-sufferance-warehouse` 共 5 个 money page，在 `src/lib/money-pages.ts` 和 `src/app/locations/[slug]/locations-data.ts` 里定义。**URL 绝对不能改**（可能有 Google 排名）。如果想精简主导航，只能"从顶部导航里隐藏 Locations 项"但**保留 URL 和 sitemap**，并在 footer 放入口给爬虫
 
 ### 3. 客户获取渠道
 
@@ -122,12 +123,13 @@
 
 1. **立即**：完成 LinkedIn Sales Navigator onboarding（卡在 example leads 页面）
 2. **本周**：发 LinkedIn 互动帖 + Blogger + Substack 文章
-3. **本周**：监控 Resend 队列把 2866 封 PENDING 发完
-4. **本周**：用 Tag Assistant 验证三个 GA ID 都在上报
-5. **持续**：每天 5–8 个 LinkedIn 连接请求
-6. **持续**：处理客户回复邮件（CC Kris）
+3. **本周**：用 Tag Assistant 验证三个 GA ID 都在上报
+4. **持续**：每天 5–8 个 LinkedIn 连接请求
+5. **持续**：处理客户回复邮件（CC Kris）
+6. **以后做**：精简 fywarehouse.com 主导航（8 项 → 4 项 + 右上 FR 切换，News/About 下沉 footer，Locations 从顶部隐藏但保留 URL）—— 2026-04-12 讨论过，用户暂缓
+7. **观察**：Resend webhook "No EmailLog found" 错误 24 小时内有没有明显减少（停掉 systemd fymail-3006 之后的验证）
 
-> 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓
+> 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓ ／ 896 封卡死跟进邮件清空 ✓ ／ Gmail 回信同步 ✓ ／ auto-followup 修补 ✓ ／ systemd fymail-3006 孤儿停掉 ✓ ／ 两个 git repo 清理 + push ✓
 
 ## fymail GitHub 仓库分支地图（重要）
 
