@@ -89,6 +89,13 @@
   - `https://*.analytics.google.com`（仅 script-src/connect-src）
 - **/zh 已清理**：`src/app/zh/` 整个目录已删除；根 `layout.tsx` 的 `alternates.languages` 也移除了 `zh` 条目，避免 hreflang 指向 301 链
 - **`/locations/*` 是 SEO 着陆页集合，不是物理地点**：`/locations/montreal-warehouse`、`/quebec-logistics`、`/montreal-customs-broker`、`/canada-freight-forwarding`、`/montreal-sufferance-warehouse` 共 5 个 money page，在 `src/lib/money-pages.ts` 和 `src/app/locations/[slug]/locations-data.ts` 里定义。**URL 绝对不能改**（可能有 Google 排名）。如果想精简主导航，只能"从顶部导航里隐藏 Locations 项"但**保留 URL 和 sitemap**，并在 footer 放入口给爬虫
+- **AI-friendly 配置（2026-04-12 完成）**：
+  - `public/robots.txt` 静态文件覆盖动态 robots.ts（后者已删），包含 `Content-Signal: search=yes, ai-input=yes, ai-train=yes` + 25+ 个 AI 爬虫明确白名单
+  - `public/llms.txt` 按 llms.txt 规范写了完整的公司简介/服务/页面索引/关键词，供 LLM grounding
+  - JSON-LD 清理了 4 条假 review 和 fake aggregateRating，Organization 加了 `@id`、`knowsAbout`、`knowsLanguage`、NAICS 代码、founder、multi-contactPoint
+  - LocalBusiness schema 加了 `@type: ['LocalBusiness', 'ProfessionalService']` + `hasOfferCatalog` 列 5 个真实服务
+  - **Cloudflare 那边必须保持 "Managed robots.txt" 开关 OFF** — 在 AI Crawl Control 页面，否则 CF 会在边缘注入 `ai-train=no` 覆盖掉原站配置
+- **canflow-global.com 的 AI-friendly 配置同步做了**：Astro 项目在 `/home/ubuntu/.openclaw/workspace/canflow-global/`，`src/layouts/BaseLayout.astro` 注入了 Organization + ProfessionalService + WebSite 三个 JSON-LD，`public/robots.txt` 和 `public/llms.txt` 同样的白名单，Cloudflare Pages 部署走 `wrangler pages deploy dist --project-name=canflow-global --branch=main`（wrangler CLI 已登录 tonygu0826@gmail.com）
 
 ### 3. 客户获取渠道
 
@@ -128,6 +135,8 @@
 5. **持续**：处理客户回复邮件（CC Kris）
 6. **以后做**：精简 fywarehouse.com 主导航（8 项 → 4 项 + 右上 FR 切换，News/About 下沉 footer，Locations 从顶部隐藏但保留 URL）—— 2026-04-12 讨论过，用户暂缓
 7. **观察**：Resend webhook "No EmailLog found" 错误 24 小时内有没有明显减少（停掉 systemd fymail-3006 之后的验证）
+8. **尽快**：给 `/home/ubuntu/.openclaw/workspace/canflow-global/` 建独立 git repo 并 push 到 GitHub。当前这个 Astro 项目**完全没有版本控制**，服务器挂了会丢代码。部署走 `wrangler pages deploy dist --project-name=canflow-global --branch=main`（wrangler 已登录 tonygu0826@gmail.com）
+9. **外链建设**：Wikidata 条目（FENGYE LOGISTICS + CanFlow Global 各一条）、PRLog/OpenPR 新闻稿发布、Google Search Console 提交 sitemap、Bing Webmaster Tools 提交 sitemap、CIFFA 会员申请、HARO 订阅
 
 > 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓ ／ 896 封卡死跟进邮件清空 ✓ ／ Gmail 回信同步 ✓ ／ auto-followup 修补 ✓ ／ systemd fymail-3006 孤儿停掉 ✓ ／ 两个 git repo 清理 + push ✓
 
