@@ -58,11 +58,14 @@
 - **当前 provider**：Resend Pro（Gmail SMTP 和 AWS SES 都已弃用）
   - Gmail 因 "Too many login attempts" 触发限流，3169 封失败
   - AWS SES Production Access 因新账号 + cold email 用例两次被拒
-- **每日上限**：5000 封（之前是 450）
-- **批次大小**：5
+- **每日上限**：10000 封（process-queue.sh DAILY_LIMIT），批大小 200 每 2 分钟一 tick
+- **队列 worker**：`*/2 * * * * process-queue.sh` 调 `/api/queue/process`，调用 lib/queue.ts 的 processQueue
+- **跟进 cron**：`0 13 * * * auto-followup.mjs`（每天 UTC 17:00 = Montreal 1PM）
 - **自动跟进**：Day 3 / Day 7 / Day 14，由 `auto-followup.mjs` 处理
-- **数据清洁**：曾有 2 条 `null contactId/templateId` 脏数据，已标记 FAILED
-- **当前进度**：~2866 封 PENDING 待发（截至上次会话）
+- **客户回信同步**：`sync-gmail-replies.mjs`（`0,30 * * * *` 每半小时跑）读取 ops@fywarehouse.com Gmail via OAuth gmail.readonly，匹配 contact 后写 INBOUND 行 + 标 REPLIED
+- **auto-followup.mjs 已修**（2026-04-12）：启动时 upsert 3 个 `auto-followup-*` EmailTemplate，创建 EmailLog 时带 templateId；skipStatuses 包含 REPLIED / UNSUBSCRIBED / BOUNCED
+- **已解决的坑**：709 + 199 = 896 PENDING 卡在 templateId null 状态，2026-04-12 补 templateId + 屏蔽 REPLIED 地雷后全部发完
+- **测试邮箱已屏蔽**：`tony@fengyecang.com` 和 `tonygu0826@gmail.com` 都被标 UNSUBSCRIBED，不会再收到自动邮件
 
 ### 2. SEO 内容管线（fywarehouse-nextjs）
 
@@ -85,6 +88,7 @@
   - `https://*.google-analytics.com`
   - `https://*.analytics.google.com`（仅 script-src/connect-src）
 - **/zh 已清理**：`src/app/zh/` 整个目录已删除；根 `layout.tsx` 的 `alternates.languages` 也移除了 `zh` 条目，避免 hreflang 指向 301 链
+- **`/locations/*` 是 SEO 着陆页集合，不是物理地点**：`/locations/montreal-warehouse`、`/quebec-logistics`、`/montreal-customs-broker`、`/canada-freight-forwarding`、`/montreal-sufferance-warehouse` 共 5 个 money page，在 `src/lib/money-pages.ts` 和 `src/app/locations/[slug]/locations-data.ts` 里定义。**URL 绝对不能改**（可能有 Google 排名）。如果想精简主导航，只能"从顶部导航里隐藏 Locations 项"但**保留 URL 和 sitemap**，并在 footer 放入口给爬虫
 
 ### 3. 客户获取渠道
 
@@ -119,12 +123,13 @@
 
 1. **立即**：完成 LinkedIn Sales Navigator onboarding（卡在 example leads 页面）
 2. **本周**：发 LinkedIn 互动帖 + Blogger + Substack 文章
-3. **本周**：监控 Resend 队列把 2866 封 PENDING 发完
-4. **本周**：用 Tag Assistant 验证三个 GA ID 都在上报
-5. **持续**：每天 5–8 个 LinkedIn 连接请求
-6. **持续**：处理客户回复邮件（CC Kris）
+3. **本周**：用 Tag Assistant 验证三个 GA ID 都在上报
+4. **持续**：每天 5–8 个 LinkedIn 连接请求
+5. **持续**：处理客户回复邮件（CC Kris）
+6. **以后做**：精简 fywarehouse.com 主导航（8 项 → 4 项 + 右上 FR 切换，News/About 下沉 footer，Locations 从顶部隐藏但保留 URL）—— 2026-04-12 讨论过，用户暂缓
+7. **观察**：Resend webhook "No EmailLog found" 错误 24 小时内有没有明显减少（停掉 systemd fymail-3006 之后的验证）
 
-> 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓
+> 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓ ／ 896 封卡死跟进邮件清空 ✓ ／ Gmail 回信同步 ✓ ／ auto-followup 修补 ✓ ／ systemd fymail-3006 孤儿停掉 ✓ ／ 两个 git repo 清理 + push ✓
 
 ## fymail GitHub 仓库分支地图（重要）
 
