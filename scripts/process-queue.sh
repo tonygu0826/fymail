@@ -37,7 +37,11 @@ PROCESSED=$(echo "$RESULT" | grep -o '"processed":[0-9]*' | cut -d: -f2)
 if [ -z "$PROCESSED" ]; then PROCESSED=0; fi
 
 # 统计实际成功的（不含失败）
-SENT=$(echo "$RESULT" | grep -o '"success":true' | wc -l)
+# Match per-email success objects inside the "results" array, not the outer
+# wrapper {"success":true,"processed":N,"results":[...]}. Each per-email
+# success looks like {"id":"...","success":true,"result":{...}} while a
+# failure is {"id":"...","success":false,"error":"..."}.
+SENT=$(echo "$RESULT" | grep -o '"success":true,"result"' | wc -l)
 
 COUNTER_VAL=$((COUNTER_VAL + SENT))
 echo "$TODAY" > "$COUNTER_FILE"

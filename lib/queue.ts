@@ -290,7 +290,7 @@ export async function processEmailLog(emailLog: any, options?: { contact?: any; 
       prisma.emailLog.update({
         where: { id: emailLog.id },
         data: {
-          status: shouldRetry ? EmailLogStatus.FAILED : EmailLogStatus.FAILED, // maybe a separate status like FAILED_PERMANENT?
+          status: EmailLogStatus.FAILED,
           errorMessage,
           retryCount,
           nextRetryAt,

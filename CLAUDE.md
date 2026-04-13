@@ -58,11 +58,14 @@
 - **当前 provider**：Resend Pro（Gmail SMTP 和 AWS SES 都已弃用）
   - Gmail 因 "Too many login attempts" 触发限流，3169 封失败
   - AWS SES Production Access 因新账号 + cold email 用例两次被拒
-- **每日上限**：5000 封（之前是 450）
-- **批次大小**：5
+- **每日上限**：10000 封（process-queue.sh DAILY_LIMIT），批大小 200 每 2 分钟一 tick
+- **队列 worker**：`*/2 * * * * process-queue.sh` 调 `/api/queue/process`，调用 lib/queue.ts 的 processQueue
+- **跟进 cron**：`0 13 * * * auto-followup.mjs`（每天 UTC 17:00 = Montreal 1PM）
 - **自动跟进**：Day 3 / Day 7 / Day 14，由 `auto-followup.mjs` 处理
-- **数据清洁**：曾有 2 条 `null contactId/templateId` 脏数据，已标记 FAILED
-- **当前进度**：~2866 封 PENDING 待发（截至上次会话）
+- **客户回信同步**：`sync-gmail-replies.mjs`（`0,30 * * * *` 每半小时跑）读取 ops@fywarehouse.com Gmail via OAuth gmail.readonly，匹配 contact 后写 INBOUND 行 + 标 REPLIED
+- **auto-followup.mjs 已修**（2026-04-12）：启动时 upsert 3 个 `auto-followup-*` EmailTemplate，创建 EmailLog 时带 templateId；skipStatuses 包含 REPLIED / UNSUBSCRIBED / BOUNCED
+- **已解决的坑**：709 + 199 = 896 PENDING 卡在 templateId null 状态，2026-04-12 补 templateId + 屏蔽 REPLIED 地雷后全部发完
+- **测试邮箱已屏蔽**：`tony@fengyecang.com` 和 `tonygu0826@gmail.com` 都被标 UNSUBSCRIBED，不会再收到自动邮件
 
 ### 2. SEO 内容管线（fywarehouse-nextjs）
 

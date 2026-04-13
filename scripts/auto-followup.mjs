@@ -47,11 +47,14 @@ const prisma = new PrismaClient();
 const SENDER_NAME = 'Tony Gu';
 const SENDER_TITLE = 'FENGYE LOGISTICS';
 const SENDER_EMAIL = 'ops@fywarehouse.com';
+// Owner for auto-managed follow-up EmailTemplate rows (Local Operator admin)
+const FOLLOWUP_TEMPLATE_OWNER_ID = 'cmn47vjzp0000wmr67ypp6zyz';
 
 const FOLLOWUPS = [
   {
     // Follow-up #2: 3 days after 1st email
     sequence: 2,
+    slug: 'auto-followup-2-quick',
     daysAfterPrev: 3,
     subject: 'Quick follow-up – FENGYE LOGISTICS',
     bodyHtml: `<p>Hi {{contactName}},</p>
@@ -68,6 +71,7 @@ const FOLLOWUPS = [
   {
     // Follow-up #3: 4 days after #2
     sequence: 3,
+    slug: 'auto-followup-3-ceta-guide',
     daysAfterPrev: 4,
     subject: 'Importing to Canada? Free guide inside',
     bodyHtml: `<p>Hi {{contactName}},</p>
@@ -87,6 +91,7 @@ const FOLLOWUPS = [
   {
     // Follow-up #4: 7 days after #3
     sequence: 4,
+    slug: 'auto-followup-4-last-note',
     daysAfterPrev: 7,
     subject: 'Last note from FENGYE LOGISTICS',
     bodyHtml: `<p>Hi {{contactName}},</p>
@@ -127,8 +132,44 @@ function personalize(html, contactName) {
 // Main logic
 // -----------------------------------------------------------------------
 
+/**
+ * Ensure each follow-up sequence has a corresponding EmailTemplate row in
+ * the database so that queue worker (lib/queue.ts) can render its body when
+ * sending. Upserts by slug, idempotent — safe to call on every cron run.
+ * Returns a Map<sequence, templateId>.
+ */
+async function ensureFollowupTemplates() {
+  const map = new Map();
+  for (const fu of FOLLOWUPS) {
+    const tpl = await prisma.emailTemplate.upsert({
+      where: { slug: fu.slug },
+      update: {
+        subject: fu.subject,
+        bodyHtml: fu.bodyHtml,
+        status: 'ACTIVE',
+      },
+      create: {
+        name: `Auto Follow-up #${fu.sequence}`,
+        slug: fu.slug,
+        language: 'EN',
+        subject: fu.subject,
+        bodyHtml: fu.bodyHtml,
+        variables: { contactName: 'string' },
+        status: 'ACTIVE',
+        ownerId: FOLLOWUP_TEMPLATE_OWNER_ID,
+        notes: 'Managed by scripts/auto-followup.mjs — do not edit in UI',
+      },
+    });
+    map.set(fu.sequence, tpl.id);
+  }
+  return map;
+}
+
 async function processFollowups() {
   log('=== Auto follow-up run started ===');
+
+  const templateIds = await ensureFollowupTemplates();
+  log(`Ensured ${templateIds.size} follow-up templates`);
 
   // Get contacts to skip: REPLIED, UNSUBSCRIBED, BOUNCED
   const skipStatuses = ['REPLIED', 'UNSUBSCRIBED', 'BOUNCED'];
@@ -222,6 +263,7 @@ async function processFollowups() {
         data: {
           contactId: email.contactId,
           campaignId: email.campaignId || null,
+          templateId: templateIds.get(fu.sequence),
           direction: 'OUTBOUND',
           status: 'PENDING',
           subject: fu.subject,
