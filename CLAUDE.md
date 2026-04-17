@@ -8,7 +8,7 @@
 - **官网**：https://www.fywarehouse.com
 - **市场**：主推欧洲市场（荷兰、德国、法国货代客户），利用 CETA 加欧自贸协定
 - **核心服务**：加拿大清关、保税仓、CARM 注册代理、最后一公里配送
-- **联系人**：Tony（运营），Kris（kris.y@fywarehouse.com，所有客户邮件 CC 她）
+- **联系人**：Tony（运营），Kris（kris.y@fywarehouse.com，**CC 她不是默认动作**，按需由 Tony 手动决定）
 
 ## 服务器环境
 
@@ -41,12 +41,18 @@
 ## Cron 任务清单
 
 ```cron
-*/2 * * * *  /home/ubuntu/fymail/scripts/process-queue.sh                                    # 邮件队列，每 2 分钟
-0 13 * * *   /home/ubuntu/fymail/scripts/auto-followup.mjs                                   # 每天 9AM Montreal 自动跟进（Day 3/7/14）
-0 6 * * 3    /home/ubuntu/fymail/scripts/run-weekly.sh                                       # 周三 2AM Europages 爬虫
-0 12 * * *   /home/ubuntu/.openclaw/workspace/fywarehouse-nextjs/scripts/daily-news-cron.sh  # 每天 8AM Montreal 生成 SEO 内容
-0 14 * * 0   /home/ubuntu/.openclaw/workspace/fywarehouse-nextjs/scripts/weekly-refresh-cron.sh # 周日内容刷新
-0 13 * * 1   curl .../api/seo/keywords/discover                                              # 每周一关键词发现
+*/2 * * * *   /home/ubuntu/fymail/scripts/process-queue.sh                                          # 邮件队列，每 2 分钟
+0 13 * * *    /home/ubuntu/fymail/scripts/auto-followup.mjs                                         # 每天 1PM Montreal 自动跟进（Day 3/7/14）
+0 6 * * 3     /home/ubuntu/fymail/scripts/run-weekly.sh                                             # 周三 6AM Montreal Europages 爬虫
+0  4 * * *    /home/ubuntu/.openclaw/workspace/fywarehouse-nextjs/scripts/daily-news-cron.sh         # 每天 4AM Montreal 生成 fywarehouse SEO 内容
+0  4 * * *    /home/ubuntu/fymail/scripts/cscb-sync-to-canflow.mjs                                   # 每天 4AM Montreal 拉 CSCB 邮件 → 生成 canflow 文章 + build + deploy
+30 4 * * *    /home/ubuntu/.openclaw/workspace/canflow-global/scripts/generate-daily-articles.mjs   # 每天 4:30AM Montreal 生成 canflow insights 文章（和 CSCB build 错开 30 分钟）
+0 14 * * 0    /home/ubuntu/.openclaw/workspace/fywarehouse-nextjs/scripts/weekly-refresh-cron.sh    # 周日 2PM Montreal 内容刷新
+0 13 * * 1    curl .../api/seo/keywords/discover                                                    # 每周一 1PM Montreal 关键词发现
+*/5 * * * *   /home/ubuntu/fymail/scripts/ingest-bot-visits.mjs                                     # 每 5 分钟从 nginx 日志摄取 fywarehouse 爬虫访问到 BotVisit 表
+0,30 * * * *  /home/ubuntu/fymail/scripts/ingest-cf-bot-visits.mjs                                  # 每 30 分钟从 CF GraphQL 拉 canflow 爬虫访问到 BotVisit 表
+0 14 * * 2    CANFLOW_EVERGREEN_COUNT=2 node .../canflow-global/scripts/generate-evergreen-articles.mjs  # 周二 2PM Montreal canflow 常青 pillar 生成（消耗 ≥90 分关键词）
+0  5 * * *    /home/ubuntu/fymail/scripts/syndicators/run.sh                                         # 每天 5AM Montreal 推送昨日文章到 Dev.to/Hashnode/Bluesky/Mastodon/Baidu
 ```
 
 每个脚本都用 `API_SECRET_KEY` 走本地 `http://localhost:3000` 调用。
@@ -60,7 +66,7 @@
   - AWS SES Production Access 因新账号 + cold email 用例两次被拒
 - **每日上限**：10000 封（process-queue.sh DAILY_LIMIT），批大小 200 每 2 分钟一 tick
 - **队列 worker**：`*/2 * * * * process-queue.sh` 调 `/api/queue/process`，调用 lib/queue.ts 的 processQueue
-- **跟进 cron**：`0 13 * * * auto-followup.mjs`（每天 UTC 17:00 = Montreal 1PM）
+- **跟进 cron**：`0 13 * * * auto-followup.mjs`（每天 1PM Montreal，服务器时区 America/Toronto）
 - **自动跟进**：Day 3 / Day 7 / Day 14，由 `auto-followup.mjs` 处理
 - **客户回信同步**：`sync-gmail-replies.mjs`（`0,30 * * * *` 每半小时跑）读取 ops@fywarehouse.com Gmail via OAuth gmail.readonly，匹配 contact 后写 INBOUND 行 + 标 REPLIED
 - **auto-followup.mjs 已修**（2026-04-12）：启动时 upsert 3 个 `auto-followup-*` EmailTemplate，创建 EmailLog 时带 templateId；skipStatuses 包含 REPLIED / UNSUBSCRIBED / BOUNCED
@@ -71,7 +77,33 @@
 
 - **关键词数据源**：Google Ads API（`generateKeywordHistoricalMetrics`）
   - Geo target: 2124 (Canada)，Language: 1000 (English)
-  - 已落库 57 个真实关键词
+  - fywarehouse 落库 ~202 个（2026-04-14 rescore+prune 后，从 438 清掉 236 个 <70 分的长尾垃圾）
+  - canflow 落库 64 个（Prisma `SeoKeyword` where site='canflow'）
+
+- **统一 opportunity 评分公式**（2026-04-14 起 fywarehouse + canflow 完全一致）：
+  ```
+  volScore    = min(50, log10(max(vol,10)) * 16)   // 对数，B2B 利基头部词 vol~1600 → 50
+  diffScore   = (100 - difficulty) * 0.25           // max 25
+  funnelBonus = bottom 22 / middle 10 / top 3
+  intentBonus = transactional 10 / commercial 8 / informational 2
+  total clamped to 100
+  ```
+  标定目标：利基头部词（vol~1600、diff~55、bottom commercial）≈ 90 分 = "值得砸内容"
+  - 公式定义在 **5 个地方**必须保持同步，改任何一个都要一起改：
+    - `fymail/scripts/discover-canflow-keywords.mjs`
+    - `fymail/scripts/seed-canflow-keywords.mjs`
+    - `fymail/scripts/rescore-canflow-keywords.mjs`
+    - `fywarehouse-nextjs/src/lib/keyword-research.ts` (`calculateOpportunity`)
+    - `fywarehouse-nextjs/src/lib/keyword-api.ts` (`recalcOpportunity`)
+    - `fywarehouse-nextjs/scripts/rescore-fywarehouse-keywords.mjs`
+  - 修完公式后用 rescore 脚本刷全库：`node scripts/rescore-canflow-keywords.mjs` + `node scripts/rescore-fywarehouse-keywords.mjs`
+
+- **关键词消费/存储门槛**：
+  - **canflow**：消费门槛 ≥90。`generate-daily-articles.mjs` 和 `generate-evergreen-articles.mjs` 的 SQL 都有 `AND opportunity >= 90`。pool 空了就让新闻文章裸跑 / evergreen 脚本直接退出，不降级
+  - **fywarehouse**：存储门槛 ≥70。`keyword-research.ts` 的 `discoverKeywords` 有 `if (opportunity < 70) continue`，发现阶段直接丢弃，数据库永远不会有 <70 的词（published/in-progress 的老词除外——rescore 时会保留这些以免断分析链路）
+  - 两个阈值不一样是故意的：canflow 在 PG 里当消费过滤，fywarehouse 在文件 store 当持久化过滤
+
+- **每周二 14:00 EDT canflow 常青生成**：`generate-evergreen-articles.mjs` 按 opportunity desc 拉 top N 未消费 ≥90 分关键词，每个跑 Claude 生成 900–1200 字 pillar 文章（不是 RSS 改写），写入 `src/content/insights/en/`，mark 为 published，npm run build + wrangler deploy。默认 N=2
 - **关键文件**：
   - `src/lib/keyword-api.ts` — Google Ads 调用封装
   - `src/lib/keyword-research.ts` — `discoverKeywords()` / `matchKeywordForNews()`
@@ -112,7 +144,7 @@
 
 - **不要 AI 味**：用户明确要求"文章内容要重新写一写，去掉 ai 味"——少用 emoji、少 bullet、多对话语气、像人写的
 - **直接执行**：用户说过"你来给我直接搞定，不要总是我来操作"——能自己跑的就直接跑，Read/Write/Edit/Bash 都能直接动 `/home/ubuntu/` 下的文件，不要让用户去 nano/复制命令
-- **客户邮件**：所有回复要 CC `kris.y@fywarehouse.com`，语气要专业但不冷淡，体现"我们是真人在做"
+- **客户邮件**：语气要专业但不冷淡，体现"我们是真人在做"。**CC Kris 只在 Tony 明确要求时才加**，Claude 不要自动加 `kris.y@fywarehouse.com` 到 CC
 - **回复中文**：跟用户对话用中文
 
 ## 已解决的坑（避免再踩）
@@ -132,7 +164,7 @@
 2. **本周**：发 LinkedIn 互动帖 + Blogger + Substack 文章
 3. **本周**：用 Tag Assistant 验证三个 GA ID 都在上报
 4. **持续**：每天 5–8 个 LinkedIn 连接请求
-5. **持续**：处理客户回复邮件（CC Kris）
+5. **持续**：处理客户回复邮件（CC Kris 按需手动，不默认）
 6. **以后做**：精简 fywarehouse.com 主导航（8 项 → 4 项 + 右上 FR 切换，News/About 下沉 footer，Locations 从顶部隐藏但保留 URL）—— 2026-04-12 讨论过，用户暂缓
 7. **观察**：Resend webhook "No EmailLog found" 错误 24 小时内有没有明显减少（停掉 systemd fymail-3006 之后的验证）
 8. **尽快**：给 `/home/ubuntu/.openclaw/workspace/canflow-global/` 建独立 git repo 并 push 到 GitHub。当前这个 Astro 项目**完全没有版本控制**，服务器挂了会丢代码。部署走 `wrangler pages deploy dist --project-name=canflow-global --branch=main`（wrangler 已登录 tonygu0826@gmail.com）
