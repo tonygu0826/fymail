@@ -74,16 +74,26 @@ async function fetchPage(url, timeoutMs = 12000) {
   // Hard wall timeout — catches Playwright CDP deadlocks where the inner
   // navigation timeout never fires. Without this the worker can hang for
   // hours on a single row (observed 2026-04-17: 15h stall at idx 4912).
+  //
+  // setTimeout is cleared whichever branch wins so the losing timer doesn't
+  // leak — previous Promise.race version leaked one timer per hard-timeout
+  // (438 timers accumulated in the first few hours before fix).
   const HARD_MS = timeoutMs * 2.5;
-  return await Promise.race([
-    smartFetchPage(url, { timeoutMs }),
-    new Promise((resolve) =>
-      setTimeout(() => {
-        console.warn(`[enrich] hard-timeout ${HARD_MS}ms on ${url}`);
-        resolve(null);
-      }, HARD_MS),
-    ),
-  ]);
+  let timer;
+  const timeoutPromise = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[enrich] hard-timeout ${HARD_MS}ms on ${url}`);
+      resolve(null);
+    }, HARD_MS);
+  });
+  try {
+    return await Promise.race([
+      smartFetchPage(url, { timeoutMs }),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 // ─────────────── domain utilities ───────────────
