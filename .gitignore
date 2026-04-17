@@ -26,6 +26,9 @@ logs/
 *.log
 data/
 .pm2/
+scripts/linkedin-posts/state.json
+scripts/linkedin-posts/alert-state.json
+scripts/linkedin-posts/queue/
 
 # editor / OS
 .DS_Store

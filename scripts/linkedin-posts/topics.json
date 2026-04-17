@@ -1,0 +1,115 @@
+{
+  "_intent": "Each topic is a news angle for the brief generator. The newsQuery feeds Google News RSS to fetch real recent articles. Tony comments on whichever real article we pick, from the warehouse-ops POV. Customs-broker how-to topics belong to canflow, not here.",
+  "topics": [
+    {
+      "id": "port-of-montreal",
+      "title": "Port of Montreal operations and labor",
+      "newsQuery": "\"Port of Montreal\" OR \"Montreal port\" OR longshore Montreal"
+    },
+    {
+      "id": "canadian-customs-policy",
+      "title": "CBSA policy and CARM rollout updates",
+      "newsQuery": "CBSA OR CARM OR \"Canada Border Services Agency\""
+    },
+    {
+      "id": "ceta-canada-eu-trade",
+      "title": "CETA and Canada-EU trade flows",
+      "newsQuery": "CETA OR \"Canada Europe trade\" OR \"Canada EU trade\""
+    },
+    {
+      "id": "canadian-rail",
+      "title": "CN / CP rail and intermodal",
+      "newsQuery": "\"CN Rail\" OR \"CPKC\" OR \"Canadian Pacific\" OR \"Canadian National Railway\" intermodal"
+    },
+    {
+      "id": "trucking-canada",
+      "title": "Canadian trucking and 401 corridor",
+      "newsQuery": "Canadian trucking OR \"freight trucking Canada\" OR \"401 corridor\""
+    },
+    {
+      "id": "freight-rates",
+      "title": "Ocean freight rates and capacity",
+      "newsQuery": "\"freight rates\" OR \"ocean freight\" OR \"FCL rates\" OR \"container shipping rates\""
+    },
+    {
+      "id": "cold-chain",
+      "title": "Cold chain and reefer logistics",
+      "newsQuery": "\"cold chain\" Canada OR \"reefer container\" OR \"temperature controlled\" logistics"
+    },
+    {
+      "id": "european-forwarders",
+      "title": "European freight forwarders and Canada lanes",
+      "newsQuery": "\"freight forwarder\" Europe Canada OR Rotterdam OR Antwerp OR Hamburg cargo"
+    },
+    {
+      "id": "tariff-anti-dumping",
+      "title": "Canadian tariff and anti-dumping decisions",
+      "newsQuery": "Canada tariff OR \"anti-dumping\" Canada OR SIMA Canada"
+    },
+    {
+      "id": "ev-battery-imports",
+      "title": "EV and battery shipments into Canada",
+      "newsQuery": "EV imports Canada OR \"battery shipping\" Canada OR \"electric vehicle\" Canada tariff"
+    },
+    {
+      "id": "supply-chain-disruption",
+      "title": "Global supply chain disruption affecting Canada",
+      "newsQuery": "supply chain Canada OR \"port strike\" OR \"longshore strike\" North America"
+    },
+    {
+      "id": "warehouse-automation",
+      "title": "Warehouse automation and 3PL technology",
+      "newsQuery": "\"warehouse automation\" OR \"WMS\" OR \"warehouse robotics\" Canada"
+    },
+    {
+      "id": "ocean-carrier-news",
+      "title": "Ocean carriers serving North America",
+      "newsQuery": "Maersk OR MSC OR CMA CGM OR Hapag-Lloyd North America"
+    },
+    {
+      "id": "air-cargo-canada",
+      "title": "Air cargo into Canada (YUL, YYZ, YVR)",
+      "newsQuery": "\"air cargo\" Canada OR YUL cargo OR Mirabel cargo OR YYZ cargo"
+    },
+    {
+      "id": "carbon-clean-trucking",
+      "title": "Clean trucking and carbon regulation in Canada",
+      "newsQuery": "\"zero emission\" trucking Canada OR \"clean fuel regulations\" Canada freight"
+    },
+    {
+      "id": "cross-border-trade",
+      "title": "Canada-US cross-border trade and trucking",
+      "newsQuery": "\"cross-border trade\" Canada US OR \"Canada US trucking\" OR Detroit Windsor freight"
+    },
+    {
+      "id": "logistics-real-estate",
+      "title": "Industrial real estate and warehousing capacity",
+      "newsQuery": "\"industrial real estate\" Canada warehouse OR \"3PL space\" OR Montreal industrial vacancy"
+    },
+    {
+      "id": "trade-compliance-news",
+      "title": "Trade compliance and customs enforcement headlines",
+      "newsQuery": "\"trade compliance\" Canada OR \"customs enforcement\" Canada OR \"CBSA seizure\""
+    },
+    {
+      "id": "energy-fuel-pricing",
+      "title": "Diesel and fuel pricing affecting freight",
+      "newsQuery": "diesel price Canada OR \"fuel surcharge\" trucking OR \"bunker fuel\" shipping"
+    },
+    {
+      "id": "industry-consolidation",
+      "title": "Forwarder / 3PL M&A and consolidation",
+      "newsQuery": "freight forwarder acquisition OR logistics merger OR 3PL acquisition Canada"
+    },
+    {
+      "id": "ecommerce-logistics-canada",
+      "title": "Cross-border e-commerce into Canada",
+      "newsQuery": "ecommerce Canada cross-border OR \"de minimis\" Canada OR Shopify logistics Canada"
+    },
+    {
+      "id": "ports-east-coast",
+      "title": "Eastern Canadian ports — Halifax, Saint John, Montreal",
+      "newsQuery": "\"Port of Halifax\" OR \"Port Saint John\" OR \"Eastern Canada port\" container"
+    }
+  ]
+}
