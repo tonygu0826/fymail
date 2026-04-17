@@ -5,9 +5,21 @@ DAILY_LIMIT=10000
 BATCH=200
 INTERVAL=120
 API_URL="http://localhost:3000/api/queue/process"
-API_KEY="1fb00ead68f6a1ac26fd4d000b3e6645651d1707f265d4b613ec09b2ade5f73e"
 LOG="/var/log/fymail-queue.log"
 COUNTER_FILE="/tmp/fymail-daily-sent"
+LOCK_FILE="/tmp/fymail-process-queue.lock"
+
+# flock：防止两个 cron tick 重叠（每 2 分钟的 cron 偶尔会和上一个慢 tick 撞车，
+# 并发 POST /api/queue/process 会让同一批 PENDING 被发两遍）
+exec 9>"$LOCK_FILE"
+flock -n 9 || { echo "$(date) 上一个 tick 还在跑，跳过" >> "$LOG"; exit 0; }
+
+# 从 .env.local 读 API_KEY（不硬编码，避免泄漏到 git/脚本）
+API_KEY=$(grep '^API_SECRET_KEY=' /home/ubuntu/fymail/.env.local 2>/dev/null | sed 's/^API_SECRET_KEY=//' | tr -d '"' | head -1)
+if [ -z "$API_KEY" ]; then
+  echo "$(date) API_SECRET_KEY 未找到，跳过" >> "$LOG"
+  exit 1
+fi
 
 # 读取今天已发数量（每天重置）
 TODAY=$(date +%Y%m%d)

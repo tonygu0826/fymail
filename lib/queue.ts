@@ -32,15 +32,26 @@ export async function enqueueEmail(input: EnqueueEmailInput) {
     maxRetries = 3,
   } = input;
 
+  // Resolve brand from campaign, template, or contact — whichever is set.
+  // Consistency is already enforced at creation time (campaign's template + contacts
+  // must share brand), so reading any one of them is fine.
+  const [campaignRow, templateRow, contactRow] = await Promise.all([
+    campaignId ? prisma.campaign.findUnique({ where: { id: campaignId }, select: { brand: true } }) : null,
+    prisma.emailTemplate.findUnique({ where: { id: templateId }, select: { brand: true } }),
+    prisma.contact.findUnique({ where: { id: contactId }, select: { email: true, brand: true } }),
+  ]);
+  const brand = campaignRow?.brand || templateRow?.brand || contactRow?.brand || "fywarehouse";
+
   const emailLog = await prisma.emailLog.create({
     data: {
+      brand,
       campaignId: campaignId ?? null,
       contactId,
       templateId,
       direction: "OUTBOUND",
       status: EmailLogStatus.PENDING,
       subject,
-      recipientEmail: "", // we need to fetch contact email
+      recipientEmail: contactRow?.email || "",
       provider: "smtp",
       maxRetries,
       scheduledAt,
@@ -50,18 +61,6 @@ export async function enqueueEmail(input: EnqueueEmailInput) {
       } as Prisma.InputJsonValue,
     },
   });
-
-  // Fetch contact email to update recipientEmail
-  const contact = await prisma.contact.findUnique({
-    where: { id: contactId },
-    select: { email: true },
-  });
-  if (contact) {
-    await prisma.emailLog.update({
-      where: { id: emailLog.id },
-      data: { recipientEmail: contact.email },
-    });
-  }
 
   return emailLog;
 }
@@ -149,6 +148,48 @@ export async function processQueue(options?: {
     }
   }
 
+  // Campaign finalization: any SCHEDULED campaign whose EmailLog rows are all
+  // non-PENDING gets flipped to COMPLETED. The UI-approval path already does
+  // this per-email, but the cron auto-approved path never did — so campaigns
+  // run entirely through cron used to stay SCHEDULED forever. Cheap catch-up:
+  // only check campaigns we actually touched in this batch, not the full table.
+  const touchedCampaignIds = Array.from(
+    new Set(pendingEmails.map((e) => e.campaignId).filter((id): id is string => !!id)),
+  );
+  for (const campaignId of touchedCampaignIds) {
+    try {
+      // Race fix: use SQL-level atomic UPDATE ... WHERE NOT EXISTS(...) so we
+      // can't mark COMPLETED in the gap between count() and update(). If a
+      // concurrent path inserts a new PENDING row right after our count, the
+      // NOT EXISTS subquery sees it and the UPDATE matches 0 rows — safe.
+      const marked: Array<{ id: string }> = await prisma.$queryRaw`
+        UPDATE "Campaign"
+        SET status = 'COMPLETED'
+        WHERE id = ${campaignId}
+          AND status = 'SCHEDULED'
+          AND NOT EXISTS (
+            SELECT 1 FROM "EmailLog"
+            WHERE "campaignId" = ${campaignId}
+              AND status = 'PENDING'
+          )
+        RETURNING id
+      `;
+      if (marked.length > 0) {
+        // Only sweep orphan CampaignContact rows when the campaign was
+        // actually flipped — otherwise we race with an in-flight enqueue.
+        await prisma.campaignContact.updateMany({
+          where: { campaignId, status: 'PENDING' },
+          data: {
+            status: 'FAILED',
+            failureReason: 'Never enqueued (invalid email or skipped at dispatch)',
+          },
+        });
+      }
+    } catch (err) {
+      console.error(`[queue] campaign finalization failed for ${campaignId}:`, err);
+    }
+  }
+
   return results;
 }
 
@@ -219,6 +260,7 @@ export async function processEmailLog(emailLog: any, options?: { contact?: any; 
       html: renderedHtml,
       text: customSignature,
       variables,
+      brand: (emailLog.brand as "fywarehouse" | "canflow") || "fywarehouse",
     });
 
     if (!result.success) {
