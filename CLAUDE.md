@@ -168,7 +168,7 @@
 6. **以后做**：精简 fywarehouse.com 主导航（8 项 → 4 项 + 右上 FR 切换，News/About 下沉 footer，Locations 从顶部隐藏但保留 URL）—— 2026-04-12 讨论过，用户暂缓
 7. **观察**：Resend webhook "No EmailLog found" 错误 24 小时内有没有明显减少（停掉 systemd fymail-3006 之后的验证）
 8. **尽快**：给 `/home/ubuntu/.openclaw/workspace/canflow-global/` 建独立 git repo 并 push 到 GitHub。当前这个 Astro 项目**完全没有版本控制**，服务器挂了会丢代码。部署走 `wrangler pages deploy dist --project-name=canflow-global --branch=main`（wrangler 已登录 tonygu0826@gmail.com）
-9. **外链建设**：Wikidata 条目（FENGYE LOGISTICS + CanFlow Global 各一条）、PRLog/OpenPR 新闻稿发布、Google Search Console 提交 sitemap、Bing Webmaster Tools 提交 sitemap、CIFFA 会员申请、HARO 订阅
+9. **外链建设（仅保留自动化项）**：Google Search Console sitemap 提交、Bing Webmaster Tools sitemap 提交。~~Wikidata / PRLog / OpenPR / CIFFA / HARO 已于 2026-04-17 明确取消，不要再出现在清单里~~
 
 > 已完成：CSP 加 GA 域名 ✓ ／ 删除 `/src/app/zh/` ✓ ／ `/zh` 重定向 ✓ ／ 896 封卡死跟进邮件清空 ✓ ／ Gmail 回信同步 ✓ ／ auto-followup 修补 ✓ ／ systemd fymail-3006 孤儿停掉 ✓ ／ 两个 git repo 清理 + push ✓
 
@@ -241,4 +241,10 @@ main 独有 11 个 commit（线 A 的 Cloudflare/中文模板/CLAUDE.md），ser
 
 ---
 
-**新会话开场指引**：读完本文件后，先问用户"今天要做什么？"，不要主动 recap 全部内容。
+**新会话开场指引**：
+
+1. 读完本文件 + MEMORY.md + SessionStart brief（自动注入的"=== 会话自动简报 ==="）
+2. Brief 里若发现 `WORKER GONE / error / 孤儿 memory / MEMORY.md 引用但文件缺失` —— 主动汇报给 Tony，不等他问
+3. 然后**先问用户"今天要做什么？"**，不要主动 recap 全部内容
+4. 用户问"未完成/TODO/待办/剩下什么"前，必读 `memory/project_done_and_cancelled.md` 过滤已完成/已取消项
+5. 需要更详细 memory 健康检查时跑 `bash /home/ubuntu/.claude/scripts/memory-check.sh`
